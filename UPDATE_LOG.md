@@ -1,15 +1,21 @@
-## 2025.04.27
+## 2025.05.12
 
 by wzh
 
-- Inital commit
+-   Update meeting note
+-   Reconstruct repo
+-   Push tips:
+    -   Avoid using `git add .`, only pick specific files to stage.
+    -   Stage config files only if necessary (we don't want our local `video_path` to be overwritten by yours).
+    -   Ensure code and directory structure is maintained, write `utils.py` if necessary.
+    -   Write docstrings for interface-level functions and classes.
 
-## 2025.4.27
+## 2025.04.27
 
 by lhz
 
-* Pipeline init
-* directory Structure
+-   Pipeline init
+-   directory Structure
 
 ```
 --- {INPUT_DIR}
@@ -30,3 +36,9 @@ by lhz
                 --- gapframe_0002_0002.png
     --- output_video.mp4
 ```
+
+## 2025.04.27
+
+by wzh
+
+-   Inital commit

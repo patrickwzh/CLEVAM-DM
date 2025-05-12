@@ -11,3 +11,4 @@ ftfy==6.3.1
 timm==1.0.15
 clean-fid==0.1.35
 einops==0.8.1
+hydra-core
