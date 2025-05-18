@@ -20,7 +20,7 @@ class ConsistentLocalEdit:
                     attn_procs[name] = SharedAttentionProcessor(style_aligned_args)
             else:
                 number_of_cross += 1
-                attn_procs[name] = DefaultAttentionProcessor()
+                attn_procs[name] = SharedCrossAttentionProcessor(cross_attn_mask, fixed_token_indices)
 
         unet.set_attn_processor(attn_procs)
     
