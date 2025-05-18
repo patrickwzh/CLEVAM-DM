@@ -1,1 +1,9 @@
 video_path: # path/to/video
+prompts:
+  original_inside: 
+  edit_inside:
+  original_outside:
+  edit_outside:
+
+device: cuda
+
