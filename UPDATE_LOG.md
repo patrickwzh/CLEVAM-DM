@@ -1,3 +1,20 @@
+## 2025.05.18
+
+by wzh
+
+TODOs for consistent local edit:
+
+-   Use `StableDiffusionPipeline` as in StyleAligned
+-   Run DDIM inversion process for the original image first, then use that latent as the input for the pipeline (remember to scale by `1 / pipeline.scheduler.init_noise_sigma`, ref. `pipeline.prepare_latents`).
+-   Self attention:
+    -   Edit based on the original `SharedAttentionProcessor` class, modify scaled dot product attention: after softmax, only keep inside-to-inside \& outside-to-outside parts.
+    -   Rename it to `SharedSelfAttentionProcessor`.
+-   Cross attention:
+    -   Implement a new class for shared cross attention, `SharedCrossAttentionProcessor`.
+    -   For the text prompts, we already have that the first half of the text prompt is for inside, and the second half is for outside.
+    -   Similar to above, modify the scaled dot product attention: after softmax, only keep inside-text-to-inside-image \& outside-text-to-outside-image parts.
+    -   Scale the fixed tokens.
+
 ## 2025.05.12
 
 by wzh
