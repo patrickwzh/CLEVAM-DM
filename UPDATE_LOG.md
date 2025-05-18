@@ -1,3 +1,14 @@
+## 2025.05.19
+
+by wzh
+
+-   Finish `SharedSelfAttentionProcessor` and some helper functions in `src/model/utils.py`.
+-   Implement some functions in `src/model/consistent_local_edit.py`: `init_attention_processors`, `get_inverse_latents`, `process`.
+-   **Further TODOs** for consistent local edit:
+    -   Helper functions in `src/utils.py`
+    -   Segmentation part in `src/model/consistent_local_edit.py`
+    -   Helper functions in `src/model/consistent_local_edit.py` and `get_clip` function in `src/model/utils.py`
+
 ## 2025.05.18
 
 by wzh
