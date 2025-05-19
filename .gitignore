@@ -1,1 +1,5 @@
 checkpoints/
+input/
+outputs/
+__pycache__
+

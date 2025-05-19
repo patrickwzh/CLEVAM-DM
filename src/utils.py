@@ -25,13 +25,14 @@ def extract_keyframes(cfg):
             break
 
         if frame_count % interval == 0:
-            keyframe_path = os.path.join(keyframe_path, f"keyframe_{keyframe_id:04d}.png")
-            cv2.imwrite(keyframe_path, frame)
-            keyframe_paths.append(keyframe_path)
+            keyframe_path_id = os.path.join(keyframe_path, f"keyframe_{keyframe_id:04d}.png")
+            cv2.imwrite(keyframe_path_id, frame)
+            keyframe_paths.append(keyframe_path_id)
             keyframe_indices.append(frame_count)
             keyframe_id += 1
 
         frame_count += 1
+        print(frame_count, keyframe_id)
 
     cap.release()
     # return keyframe_paths

@@ -12,7 +12,10 @@ from src.model.utils import (
 )
 from diffusers import StableDiffusionPipeline, DDIMScheduler
 from src.utils import get_keyframes, save_processed_keyframes
-from src.segmentation.maskformer import infer_maskformer
+from src.segmentation.maskformer import infer_maskformer, setup_cfg
+from detectron2.engine.defaults import DefaultPredictor
+import numpy as np
+from PIL import Image
 
 
 class ConsistentLocalEdit:
@@ -111,23 +114,28 @@ class ConsistentLocalEdit:
         self_attn_mask = []
         cross_attn_mask = []
         keyframes = get_keyframes(cfg)
+        maskformer_cfg = setup_cfg("mask_former/configs/maskformer_R50_bs32_60k.yaml")
+        maskformer_model = DefaultPredictor(maskformer_cfg)
         for frame in keyframes:
-            segm = infer_maskformer(frame, cfg.prompts.original_inside)
+            segm = infer_maskformer(frame, cfg.prompts.original_inside, maskformer_model)
+            segm_img = (segm.astype(np.uint8)) * 255
+            img = Image.fromarray(segm_img)
+            img.save(f"D:/DL2025/CLEVM-DM/input/keyframes/segm_{keyframes.index(frame)}.png")
             self_attn_mask.append(self.get_self_attn_mask(segm))
             cross_attn_mask.append(self.get_cross_attn_mask(segm, cfg))
 
-        original_promp_embeds, edit_prompt_embeds, fixed_token_indices = (
-            self.process_prompts(cfg)
-        )
-        init_shared_norm(self.pipeline)
-        self.init_attention_processors(
-            self.pipeline, self_attn_mask, cross_attn_mask, fixed_token_indices
-        )
+        # original_promp_embeds, edit_prompt_embeds, fixed_token_indices = (
+        #     self.process_prompts(cfg)
+        # )
+        # init_shared_norm(self.pipeline)
+        # self.init_attention_processors(
+        #     self.pipeline, self_attn_mask, cross_attn_mask, fixed_token_indices
+        # )
 
-        latents = self.get_inverse_latents(keyframes, original_promp_embeds)
-        processed_keyframes = self.pipeline(
-            latents=latents,
-            prompt_embeds=edit_prompt_embeds,
-        ).images
+        # latents = self.get_inverse_latents(keyframes, original_promp_embeds)
+        # processed_keyframes = self.pipeline(
+        #     latents=latents,
+        #     prompt_embeds=edit_prompt_embeds,
+        # ).images
 
-        save_processed_keyframes(processed_keyframes, cfg)
+        # save_processed_keyframes(processed_keyframes, cfg)

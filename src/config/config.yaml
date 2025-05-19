@@ -1,12 +1,12 @@
-video_path: ./input/example.mp4 # path/to/video
-keyframe_path: ./input/keyframes/ # path/to/keyframes
-output_dir: ./output/example/ # path/to/output
+video_path: D:/DL2025/CLEVAM-DM/input/example.mp4 # path/to/video
+keyframe_path: D:/DL2025/CLEVAM-DM/input/keyframes/ # path/to/keyframes
+output_dir: D:/DL2025/CLEVAM-DM/video_output/example/ # path/to/output
 interval: 10 # interval between frames
 prompts:
-  original_inside: 
-  edit_inside:
-  original_outside:
-  edit_outside:
+  original_inside: dog
+  edit_inside: robotic dog
+  original_outside: background
+  edit_outside: background
 
 device: cuda
 
