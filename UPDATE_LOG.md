@@ -1,5 +1,13 @@
 ## 2025.05.19
 
+by lkh
+
+- Finish `SharedCrossAttentionProcessor` and some helper functions in `src/model/utils.py`.
+- Implement `process_prompts` function in `src/model/consistent_local_edit.py`.
+- Implement `get_clip` function in `src/model/utils.py`.
+
+## 2025.05.19
+
 by wzh
 
 -   Finish `SharedSelfAttentionProcessor` and some helper functions in `src/model/utils.py`.
