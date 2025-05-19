@@ -1,4 +1,7 @@
-video_path: # path/to/video
+video_path: ./input/example.mp4 # path/to/video
+keyframe_path: ./input/keyframes/ # path/to/keyframes
+output_dir: ./output/example/ # path/to/output
+interval: 10 # interval between frames
 prompts:
   original_inside: 
   edit_inside:
