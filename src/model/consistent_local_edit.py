@@ -12,11 +12,11 @@ from src.model.utils import (
 )
 from diffusers import StableDiffusionPipeline, DDIMScheduler
 from src.utils import get_keyframes, save_processed_keyframes
+from src.segmentation.maskformer import infer_maskformer
 
 
 class ConsistentLocalEdit:
     def __init__(self, cfg):
-        self.segment = ...
         self.clip, self.clip_tokenizer = get_clip(cfg)
         self.scheduler = DDIMScheduler(
             beta_start=0.00085,
@@ -105,14 +105,14 @@ class ConsistentLocalEdit:
 
     def process(self, cfg):
         """
-        总处理, 需要 cfg.
+        Process all frames
         no output, save processed keyframes to cfg.keyframes_path/video_name/{original_idx}_keyframe_processed.png
         """
         self_attn_mask = []
         cross_attn_mask = []
         keyframes = get_keyframes(cfg)
         for frame in keyframes:
-            segm = self.segment(frame)
+            segm = infer_maskformer(frame, cfg.prompts.original_inside)
             self_attn_mask.append(self.get_self_attn_mask(segm))
             cross_attn_mask.append(self.get_cross_attn_mask(segm, cfg))
 

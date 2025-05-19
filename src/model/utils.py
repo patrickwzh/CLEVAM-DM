@@ -7,7 +7,7 @@ T = torch.Tensor
 
 def get_clip(cfg):
     clip_model = CLIPModel.from_pretrained(
-        "openai/clip-vit-large-patch14"
+        "openai/clip-vit-large-patch14",
         torch_dtype=torch.float16
     )
     clip_tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
