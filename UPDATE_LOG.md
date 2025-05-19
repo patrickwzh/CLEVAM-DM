@@ -1,5 +1,15 @@
 ## 2025.05.19
 
+by wzh
+
+- Update requirements and refactor segmentation and attention processing
+- Integrated `infer_maskformer` for segmentation in `consistent_local_edit.py`.
+- Introduced `maskformer.py` for MaskFormer model setup and inference.
+- Removed unused `shape_guided_diffusion` files to clean up the codebase.
+
+
+## 2025.05.19
+
 by lkh
 
 - Finish `SharedCrossAttentionProcessor` and some helper functions in `src/model/utils.py`.
