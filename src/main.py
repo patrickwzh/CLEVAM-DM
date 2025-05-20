@@ -11,7 +11,7 @@ def main(cfg):
     # 对 config 操作
     # CLEVAM_DM(cfg)
     model = ConsistentLocalEdit(cfg)
-    # model.prepare_segms(cfg, get_keyframes(cfg))
+    model.prepare_segms(cfg, get_keyframes(cfg))
     model.process(cfg)
     
 

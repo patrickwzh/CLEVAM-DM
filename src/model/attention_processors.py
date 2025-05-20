@@ -4,9 +4,8 @@ from diffusers.models import attention_processor
 from src.model.utils import adain, concat_first, masked_scaled_dot_product_attention
 import einops
 
-
 class SharedSelfAttentionProcessor(nn.Module):
-    def __init__(self, attn_mask, full_attn_share=False):
+    def __init__(self, attn_mask=None, full_attn_share=False):
         super().__init__()
         self.attn_mask = attn_mask
         self.full_attn_share = full_attn_share
@@ -61,9 +60,14 @@ class SharedSelfAttentionProcessor(nn.Module):
         value = adain(value)
         key = concat_first(key, -2)
         value = concat_first(value, -2)
-        hidden_states = masked_scaled_dot_product_attention(
-            attn, query, key, value, attn_mask=self.attn_mask
-        )
+        if self.attn_mask is not None:
+            hidden_states = masked_scaled_dot_product_attention(
+                attn, query, key, value, attn_mask=self.attn_mask
+            )
+        else:
+            hidden_states = masked_scaled_dot_product_attention(
+                attn, query, key, value, attn_mask=attention_mask
+            )
         hidden_states = hidden_states.transpose(1, 2).reshape(
             batch_size, -1, attn.heads * head_dim
         )
@@ -193,7 +197,7 @@ class SharedSelfAttentionProcessor(nn.Module):
 
 
 class SharedCrossAttentionProcessor(nn.Module):
-    def __init__(self, cross_attn_mask, fixed_token_indices):
+    def __init__(self, cross_attn_mask=None, fixed_token_indices=None):
         super().__init__()
         self.cross_attn_mask = cross_attn_mask
         self.fixed_token_indices = fixed_token_indices
@@ -242,15 +246,19 @@ class SharedCrossAttentionProcessor(nn.Module):
         query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
         key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
         value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-
-        hidden_states = masked_scaled_dot_product_attention(
-            attn,
-            query,
-            key,
-            value,
-            attn_mask=self.cross_attn_mask,
-            fixed_token_indices=self.fixed_token_indices,
-        )
+        if self.cross_attn_mask is not None:
+            hidden_states = masked_scaled_dot_product_attention(
+                attn,
+                query,
+                key,
+                value,
+                attn_mask=self.cross_attn_mask,
+                fixed_token_indices=self.fixed_token_indices,
+            )
+        else:
+            hidden_states = masked_scaled_dot_product_attention(
+                attn, query, key, value, attn_mask=attention_mask
+            )
         hidden_states = hidden_states.transpose(1, 2).reshape(
             batch_size, -1, attn.heads * head_dim
         )

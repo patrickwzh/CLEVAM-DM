@@ -1,3 +1,13 @@
+## 2025.05.10
+
+by lkh
+
+- Change shepe guided diffusion only to the first layer of unet
+- The pipeline work for single image now
+- **Problems**:
+  - `get_inversion_latents` function does not work for batch size > 1
+  - The output cannot reserve the shape
+
 ## 2025.05.19
 
 by lhz
