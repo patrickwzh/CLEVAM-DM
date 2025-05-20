@@ -1,12 +1,12 @@
 import detectron2
 import torch
 import numpy as np
+import einops
 
 from detectron2.config import get_cfg
 from detectron2.projects.deeplab import add_deeplab_config
-from detectron2.engine.defaults import DefaultPredictor
-from mask_former.config import add_mask_former_config
-from mask_former.data.datasets.register_coco_stuff_10k import COCO_CATEGORIES
+from src.mask_former.config import add_mask_former_config
+from src.mask_former.data.datasets.register_coco_stuff_10k import COCO_CATEGORIES
 
 
 def setup_cfg(cfg_path):
@@ -15,14 +15,12 @@ def setup_cfg(cfg_path):
     add_mask_former_config(cfg)
     cfg.merge_from_file(cfg_path)
     cfg.freeze()
+    print(f"seg cfg {cfg}")
     return cfg
 
 
-maskformer_cfg = setup_cfg("mask_former/configs/maskformer_R50_bs32_60k.yaml")
-maskformer_model = DefaultPredictor(maskformer_cfg)
 
-
-def infer_maskformer(img, source_prompt):
+def infer_maskformer(imgs, source_prompt, maskformer_model, aug):
     """
     Returns a binary mask for the specified source prompt using MaskFormer.
     """
@@ -30,10 +28,22 @@ def infer_maskformer(img, source_prompt):
     if source_prompt not in category_mapping:
         raise ValueError(f"Prompt '{source_prompt}' not found in category mapping.")
     category_idx = category_mapping[source_prompt]
-    img = np.array(img)
+    # img = img.unsqueeze(0)
+    # img = img.to(torch.float32) / 255.0
+    # img = np.array(img)
+    _, height, width, _ = imgs.shape
+    print(f"shapes: {imgs.shape}")
+    imgs = [np.array(img) for img in imgs]
+    imgs = np.array([aug.get_transform(img).apply_image(img) for img in imgs])
+    imgs = torch.as_tensor(imgs.astype("float32").transpose(0, 3, 1, 2))
+
+    inputs = [{"image": img, "height": height, "width": width} for img in imgs]
     with torch.no_grad():
-        mask_preds = maskformer_model(img)["sem_seg"]
-        mask_preds = mask_preds.detach().cpu().numpy()
-    mask_preds = mask_preds.argmax(axis=0)
-    mask_preds = np.where(mask_preds == category_idx, 1, 0)
+        predictions = maskformer_model(inputs)
+        predictions = torch.stack([pred["sem_seg"] for pred in predictions])
+        # predictions = predictions.detach().cpu().numpy()
+    print(f"preds: {predictions}")
+    mask_preds = predictions.argmax(dim=1)
+    mask_preds = (mask_preds == category_idx).to(torch.uint8)
+    mask_preds = mask_preds.detach().cpu().numpy()
     return mask_preds

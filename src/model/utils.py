@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from transformers import CLIPModel, CLIPTokenizer
 from difflib import SequenceMatcher
+import einops
 
 T = torch.Tensor
 
@@ -16,7 +17,7 @@ def get_clip(cfg):
     return clip, clip_tokenizer
 
 
-def get_tokens_embeds(clip_tokenizer, clip, prompt):
+def get_tokens_embeds(clip_tokenizer, clip, prompt, cfg):
     tokens = clip_tokenizer(
         prompt,
         padding="max_length",
@@ -25,8 +26,9 @@ def get_tokens_embeds(clip_tokenizer, clip, prompt):
         return_tensors="pt",
         return_overflowing_tokens=True
     )
-    input_ids = tokens.input_ids.to(clip.device)
+    input_ids = tokens.input_ids.to(cfg.device)
     embedding = clip(input_ids).last_hidden_state
+    embedding = embedding.to(torch.float32)
     return tokens, embedding
 
 
@@ -44,21 +46,32 @@ def compute_fixed_indices(tokens_inversion, tokens, num_tokens=38):
     return torch.tensor(fixed_indices)[1:]
 
 
-def init_shared_norm(pipeline):
+def init_shared_norm(pipeline, full_attn_share=False):
     def register_norm_forward(
-        norm_layer: nn.GroupNorm | nn.LayerNorm,
+        norm_layer: nn.GroupNorm | nn.LayerNorm, full_attn_share
     ) -> nn.GroupNorm | nn.LayerNorm:
         if not hasattr(norm_layer, "orig_forward"):
             setattr(norm_layer, "orig_forward", norm_layer.forward)
         orig_forward = norm_layer.orig_forward
 
-        def forward_(hidden_states: T) -> T:
+        def only_first_forward_(hidden_states: T) -> T:
             n = hidden_states.shape[-2]
             hidden_states = concat_first(hidden_states, dim=-2)
             hidden_states = orig_forward(hidden_states)
             return hidden_states[..., :n, :]
+        
+        def full_share_forward_(hidden_states: T) -> T:
+            n = hidden_states.shape[-2]
+            hidden_states = einops.rearrange(
+                hidden_states, "(k b) n d -> k (b n) d", k=2
+            )
+            hidden_states = orig_forward(hidden_states)
+            hidden_states = einops.rearrange(
+                hidden_states, "k (b n) d -> (k b) n d", n=n
+            )
+            return hidden_states
 
-        norm_layer.forward = forward_
+        norm_layer.forward = full_share_forward_ if full_attn_share else only_first_forward_
 
     def get_norm_layers(
         pipeline_, norm_layers_: dict[str, list[nn.GroupNorm | nn.LayerNorm]]
@@ -74,9 +87,9 @@ def init_shared_norm(pipeline):
     norm_layers = {"group": [], "layer": []}
     get_norm_layers(pipeline.unet, norm_layers)
     for layer in norm_layers["layer"]:
-        register_norm_forward(layer)
+        register_norm_forward(layer, full_attn_share)
     for layer in norm_layers["group"]:
-        register_norm_forward(layer)
+        register_norm_forward(layer, full_attn_share)
 
 
 def expand_first(
@@ -126,8 +139,10 @@ def masked_scaled_dot_product_attention(
     """
     logits = torch.einsum("bhqd,bhkd->bhqk", query, key) * attn.scale
     probs = logits.softmax(dim=-1)  # (batch_size, num_heads, seq1_length, seq2_length)
-    attn_mask = attn_mask.unsqueeze(1).expand(-1, query.shape[1], -1, -1)
-    probs = probs * attn_mask
+    if attn_mask is not None:
+        attn_mask = attn_mask.unsqueeze(1).expand(-1, query.shape[1], -1, -1)
+        print(f"shapes: {probs.shape}, {attn_mask.shape}")
+        probs = probs * attn_mask
     if fixed_token_indices is not None:
         inside_indices = torch.tensor([i for i in range(1, 39)])
         outside_indices = torch.tensor([i for i in range(39, 77)])

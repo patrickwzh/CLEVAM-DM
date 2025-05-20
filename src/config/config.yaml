@@ -1,12 +1,13 @@
-video_path: D:/DL2025/CLEVAM-DM/input/example.mp4 # path/to/video
-keyframe_path: D:/DL2025/CLEVAM-DM/input/keyframes/ # path/to/keyframes
-output_dir: D:/DL2025/CLEVAM-DM/video_output/example/ # path/to/output
-interval: 10 # interval between frames
+video_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/example.mp4 # path/to/video
+keyframe_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/keyframes/ # path/to/keyframes
+output_dir: /home/wzh/nfsdata/projects/CLEVAM-DM/video_output/example/ # path/to/output
+maskformer_path: /home/wzh/nfsdata/projects/CLEVAM-DM/src/mask_former/configs/maskformer_R50_bs32_60k.yaml
+interval: 1000000 # interval between frames, 70 for 4 images
 prompts:
-  original_inside: dog
-  edit_inside: robotic dog
+  original_inside: person
+  edit_inside: robot
   original_outside: background
   edit_outside: background
 
-device: cuda
+device: cuda:5
 

@@ -1,6 +1,7 @@
 import torch
 import cv2
 import os
+import numpy as np
 def extract_keyframes(cfg):
     """
     Load video
@@ -32,7 +33,6 @@ def extract_keyframes(cfg):
             keyframe_id += 1
 
         frame_count += 1
-        print(frame_count, keyframe_id)
 
     cap.release()
     # return keyframe_paths
@@ -42,20 +42,19 @@ def extract_keyframes(cfg):
 def get_keyframes(cfg):
     """
     Load keyframes from cfg.output_dir/keyframe_path/keyframe_{keyframe_id}.png
-    Return a torch tensor of shape (num_frames, channels, height, width)
+    Returns a torch tensor of shape (num_frames, height, width, channels) with BGR format
     """
     keyframe_path = cfg.keyframe_path
     keyframe_paths = []
     for root, dirs, files in os.walk(keyframe_path):
         for file in files:
-            if file.endswith(".png"):
+            if file.endswith(".png") and file.startswith("keyframe_"): # TODO: change this because processed keyframes is also like this
                 keyframe_paths.append(os.path.join(root, file))
 
     keyframes = []
     for path in keyframe_paths:
         frame = cv2.imread(path)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = torch.from_numpy(frame).permute(2, 0, 1)  # HWC to CHW
+        frame = torch.from_numpy(frame)
         keyframes.append(frame)
 
     return torch.stack(keyframes)
@@ -63,13 +62,14 @@ def get_keyframes(cfg):
 
 def save_processed_keyframes(processed_keyframes, cfg):
     """
+    Processed_keyframes: Image objects
     Save processed keyframes to cfg.output_dir/{original_idx}_keyframe_processed.png
     """
     output_dir = cfg.output_dir
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for i, frame in enumerate(processed_keyframes):
-        frame = frame.permute(1, 2, 0).numpy()  # CHW to HWC
+        frame = np.array(frame)  # Convert PIL Image to numpy array (HWC, RGB)
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         output_path = os.path.join(output_dir, f"{i:04d}_keyframe_processed.png")
         cv2.imwrite(output_path, frame)
