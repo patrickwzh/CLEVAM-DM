@@ -10,6 +10,7 @@ from src.model.utils import (
     get_tokens_embeds,
     compute_fixed_indices,
     concat_first,
+    scheduler_wrapper,
 )
 from diffusers import StableDiffusionPipeline, DDIMScheduler
 from src.utils import get_keyframes, save_processed_keyframes
@@ -159,6 +160,11 @@ class ConsistentLocalEdit:
 
         unet.set_attn_processor(attn_procs)
     
+    def prepare_scheduler(self, pipeline, init_latents, mask):
+        original_scheduler = pipeline.scheduler
+        new_scheduler = scheduler_wrapper(init_latents, original_scheduler, mask)
+        pipeline.scheduler = new_scheduler
+
     def process(self, cfg):
         """
         Process all frames
@@ -182,9 +188,9 @@ class ConsistentLocalEdit:
             segms.append(torch.tensor(segm.flatten()))
         
         segms = torch.stack(segms).to(cfg.device)
-        segms = segms.expand(2, -1)
-        self_attn_mask = self.get_self_attn_mask(segms)
-        cross_attn_mask = self.get_cross_attn_mask(segms)
+        expanded_segms = segms.expand(2, -1)
+        self_attn_mask = self.get_self_attn_mask(expanded_segms)
+        cross_attn_mask = self.get_cross_attn_mask(expanded_segms)
 
         print(f"self_attn_mask shape: {self_attn_mask.shape}, size in memory: {self_attn_mask.element_size() * self_attn_mask.nelement() / 1024 / 1024:.2f} MB")
         print(f"cross_attn_mask shape: {cross_attn_mask.shape}, size in memory: {cross_attn_mask.element_size() * cross_attn_mask.nelement() / 1024 / 1024:.2f} MB")
@@ -200,6 +206,8 @@ class ConsistentLocalEdit:
         self.init_attention_processors(
             self.pipeline, self_attn_mask, cross_attn_mask, fixed_token_indices, full_attn_share=False
         )
+        self.prepare_scheduler(self.pipeline, latents, segms)
+        
         processed_keyframes = self.pipeline(
             latents=latents,
             prompt_embeds=edit_prompt_embeds,
