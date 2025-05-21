@@ -45,7 +45,7 @@ class SharedSelfAttentionProcessor(nn.Module):
             hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(
                 1, 2
             )
-        print(f"hidden shape: {hidden_states.shape}")
+        # print(f"hidden shape: {hidden_states.shape}")
         query = attn.to_q(hidden_states)
         key = attn.to_k(hidden_states)
         value = attn.to_v(hidden_states)

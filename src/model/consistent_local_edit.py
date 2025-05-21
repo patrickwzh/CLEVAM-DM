@@ -34,7 +34,7 @@ class ConsistentLocalEdit:
             set_alpha_to_one=False,
         )
         self.pipeline = StableDiffusionPipeline.from_pretrained(
-            "CompVis/stable-diffusion-v1-4", revision="fp16", scheduler=self.scheduler
+            "stabilityai/stable-diffusion-3.5-large-turbo", torch_dtype=torch.bfloat16, scheduler=self.scheduler
         )
         self.pipeline = self.pipeline.to(cfg.device)
         self.clip, self.clip_tokenizer = self.pipeline.text_encoder, self.pipeline.tokenizer
@@ -46,9 +46,14 @@ class ConsistentLocalEdit:
         keyframes = keyframes[:, [2, 1, 0], ...]
         keyframes = keyframes / 255.0
         init_latents = vae.encode(keyframes).latent_dist.sample() * 0.18215
+        batch_size, _, _, _ = init_latents.shape
+        init_latents = init_latents.repeat(2, 1, 1, 1)
         latents, _ = inversion(
             init_latents, self.pipeline.unet, self.scheduler, original_prompt_embeds
         )
+        latents = [latent.to(self.pipeline.device) for latent in latents]
+        latents = torch.stack(latents)
+        latents = latents[:, :batch_size]
         # pipeline's `prepare_latents` has scaled the latents by `init_noise_sigma`, so we need to pre-scale it back
         return latents
 
@@ -146,22 +151,24 @@ class ConsistentLocalEdit:
         attn_procs = {}
         unet = pipeline.unet
         number_of_self, number_of_cross = 0, 0
+        sharedselfattnproc_mask = SharedSelfAttentionProcessor(self_attn_mask, full_attn_share)
+        sharedselfattnproc = SharedSelfAttentionProcessor()
+        sharedcrossattnproc_mask = SharedCrossAttentionProcessor(cross_attn_mask, fixed_token_indices)
+        sharedcrossattnproc = SharedCrossAttentionProcessor(fixed_token_indices=fixed_token_indices)
         for i, name in enumerate(unet.attn_processors.keys()):
             is_self_attention = "attn1" in name
             if is_self_attention:
                 number_of_self += 1
                 if number_of_self == 1:
-                    attn_procs[name] = SharedSelfAttentionProcessor(self_attn_mask, full_attn_share)
+                    attn_procs[name] = sharedselfattnproc_mask
                 else:
-                    attn_procs[name] = SharedSelfAttentionProcessor()
+                    attn_procs[name] = sharedselfattnproc
             else:
                 number_of_cross += 1
                 if number_of_cross == 1:
-                    attn_procs[name] = SharedCrossAttentionProcessor(
-                        cross_attn_mask, fixed_token_indices
-                    )
+                    attn_procs[name] = sharedcrossattnproc_mask
                 else:
-                    attn_procs[name] = SharedCrossAttentionProcessor()
+                    attn_procs[name] = sharedcrossattnproc
         unet.set_attn_processor(attn_procs)
 
     def process(self, cfg):
@@ -190,9 +197,11 @@ class ConsistentLocalEdit:
             segms.append(torch.tensor(segm.flatten()))
         
         segms = torch.stack(segms).to(cfg.device)
-        expanded_segms = segms.expand(2, -1)
-        self_attn_mask = self.get_self_attn_mask(expanded_segms)
-        cross_attn_mask = self.get_cross_attn_mask(expanded_segms)
+        print(f"segms shape: {segms.shape}, size in memory: {segms.element_size() * segms.nelement() / 1024 / 1024:.2f} MB")
+        expanded_segms = segms.repeat(2, 1)
+        print(f"expanded_segms shape: {expanded_segms.shape}, size in memory: {expanded_segms.element_size() * expanded_segms.nelement() / 1024 / 1024:.2f} MB")
+        self_attn_mask = self.get_self_attn_mask(expanded_segms).to(cfg.device)
+        cross_attn_mask = self.get_cross_attn_mask(expanded_segms).to(cfg.device)
 
         print(f"self_attn_mask shape: {self_attn_mask.shape}, size in memory: {self_attn_mask.element_size() * self_attn_mask.nelement() / 1024 / 1024:.2f} MB")
         print(f"cross_attn_mask shape: {cross_attn_mask.shape}, size in memory: {cross_attn_mask.element_size() * cross_attn_mask.nelement() / 1024 / 1024:.2f} MB")
@@ -202,15 +211,22 @@ class ConsistentLocalEdit:
             self.process_prompts(cfg)
         )
 
+        original_promp_embeds = original_promp_embeds.expand(2 * batch_size, -1, -1)
+        edit_prompt_embeds = edit_prompt_embeds.expand(batch_size, -1, -1)
 
-        latents = self.get_inverse_latents(keyframes, original_promp_embeds, self.pipeline.vae)
+        print(f"self mask shape: {self_attn_mask.shape}, cross mask shape: {cross_attn_mask.shape}")
 
         init_shared_norm(self.pipeline, full_attn_share=False)
         self.init_attention_processors(
             self.pipeline, self_attn_mask, cross_attn_mask, fixed_token_indices, full_attn_share=False
         )
 
+        latents = self.get_inverse_latents(keyframes, original_promp_embeds, self.pipeline.vae)
+
+        print(torch.cuda.memory_summary(device=None, abbreviated=False))
+
         segms = segms.reshape(batch_size, original_h, original_w)
+        # segms = segms.repeat(2, 1, 1)
         processed_keyframes = self.pipeline(
             latents=latents[-1] / self.pipeline.scheduler.init_noise_sigma,
             prompt_embeds=edit_prompt_embeds,

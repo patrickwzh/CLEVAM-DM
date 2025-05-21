@@ -13,9 +13,11 @@ T = torch.Tensor
 def callback_factory(init_latents, mask):
     def copy_background_callback(pipeline, step, timestep, callback_kwargs):
         latents = callback_kwargs["latents"]
-        print(f"using timestep: {timestep}")
+        # print(f"using timestep: {timestep}")
         init_latent_mask = init_latents[timestep - 1].to(latents.device)
-        latents = (init_latent_mask * (1 - mask)) + (latents * mask)
+        # print(f"init_latent_mask shape: {init_latent_mask.shape}, mask shape: {mask.shape}, latents shape: {latents.shape}")
+        mask_ = mask.unsqueeze(1)
+        latents = (init_latent_mask * (1 - mask_)) + (latents * mask_)
         callback_kwargs["latents"] = latents
         return callback_kwargs
 
@@ -146,7 +148,7 @@ def masked_scaled_dot_product_attention(
     probs = logits.softmax(dim=-1)  # (batch_size, num_heads, seq1_length, seq2_length)
     if attn_mask is not None:
         attn_mask = attn_mask.unsqueeze(1).expand(-1, query.shape[1], -1, -1)
-        print(f"shapes: {probs.shape}, {attn_mask.shape}")
+        # print(f"shapes: {probs.shape}, {attn_mask.shape}")
         probs = probs * attn_mask
     if fixed_token_indices is not None:
         inside_indices = torch.tensor([i for i in range(1, 39)])

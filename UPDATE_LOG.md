@@ -2,6 +2,13 @@
 
 by lkh, wzh
 
+- Pipeline work for multiple images
+- The image color is too light, may be due to some scale problems
+
+## 2025.05.21
+
+by lkh, wzh
+
 - Use `copy background` to improve the quality of the output image
 - The pipeline can work well for single image now!
 - **Problem**:
