@@ -151,13 +151,18 @@ class ConsistentLocalEdit:
             is_self_attention = "attn1" in name
             if is_self_attention:
                 number_of_self += 1
-                attn_procs[name] = SharedSelfAttentionProcessor(self_attn_mask, full_attn_share)
+                if number_of_self == 1:
+                    attn_procs[name] = SharedSelfAttentionProcessor(self_attn_mask, full_attn_share)
+                else:
+                    attn_procs[name] = SharedSelfAttentionProcessor()
             else:
                 number_of_cross += 1
-                attn_procs[name] = SharedCrossAttentionProcessor(
-                    cross_attn_mask, fixed_token_indices
-                )
-
+                if number_of_cross == 1:
+                    attn_procs[name] = SharedCrossAttentionProcessor(
+                        cross_attn_mask, fixed_token_indices
+                    )
+                else:
+                    attn_procs[name] = SharedCrossAttentionProcessor()
         unet.set_attn_processor(attn_procs)
     
     def prepare_scheduler(self, pipeline, init_latents, mask):
