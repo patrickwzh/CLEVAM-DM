@@ -1,3 +1,12 @@
+## 2025.05.21
+
+by lkh, wzh
+
+- Use `copy background` to improve the quality of the output image
+- The pipeline can work well for single image now!
+- **Problem**:
+  - The VRAM usage is too high, need to find the problem and optimize.
+
 ## 2025.05.10
 
 by lkh

@@ -5,6 +5,7 @@ from difflib import SequenceMatcher
 from diffusers import DDIMScheduler
 import einops
 from typing import Optional
+from tqdm import tqdm
 
 T = torch.Tensor
 
@@ -12,23 +13,13 @@ T = torch.Tensor
 def callback_factory(init_latents, mask):
     def copy_background_callback(pipeline, step, timestep, callback_kwargs):
         latents = callback_kwargs["latents"]
-        init_latent_mask = init_latents[-step - 1].to(latents.device)
+        print(f"using timestep: {timestep}")
+        init_latent_mask = init_latents[timestep - 1].to(latents.device)
         latents = (init_latent_mask * (1 - mask)) + (latents * mask)
         callback_kwargs["latents"] = latents
         return callback_kwargs
 
     return copy_background_callback
-
-
-def get_clip(cfg):
-    clip_model = CLIPModel.from_pretrained(
-        "openai/clip-vit-large-patch14",
-        torch_dtype=torch.float16
-    )
-    clip_tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
-    clip = clip_model.text_model
-    clip = clip.to(cfg.device)
-    return clip, clip_tokenizer
 
 
 def get_tokens_embeds(clip_tokenizer, clip, prompt, cfg):
@@ -180,7 +171,7 @@ def inversion(x, model, scheduler, original_prompt_embeds):
 
         x0_preds = []
         xs = [x]
-        for index, (i, j) in enumerate(zip(seq_iter, seq_next_iter)):
+        for index, (i, j) in tqdm(enumerate(zip(seq_iter, seq_next_iter)), total=len(seq_iter)):
             t = (torch.ones(n) * i).to(x.device)
             next_t = (torch.ones(n) * j).to(x.device)
             at = (1 - b).cumprod(dim=0).index_select(0, t.long())
@@ -194,7 +185,9 @@ def inversion(x, model, scheduler, original_prompt_embeds):
             # set_timestep(model, 0.0)
 
             et = model(xt, t, encoder_hidden_states=original_prompt_embeds).sample
-
+            # print(f"et shape: {et.shape}, xt shape: {xt.shape}, at shape: {at.shape}")
+            at = at.reshape(-1, 1, 1, 1)
+            at_next = at_next.reshape(-1, 1, 1, 1)
             x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()
             x0_preds.append(x0_t.to("cpu"))
             c2 = (1 - at_next).sqrt()

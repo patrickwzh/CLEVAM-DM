@@ -5,7 +5,6 @@ from src.model.attention_processors import (
 )
 from src.model.utils import (
     init_shared_norm,
-    get_clip,
     inversion,
     get_tokens_embeds,
     compute_fixed_indices,
@@ -27,7 +26,6 @@ from tqdm import tqdm
 
 class ConsistentLocalEdit:
     def __init__(self, cfg):
-        self.clip, self.clip_tokenizer = get_clip(cfg)
         self.scheduler = DDIMScheduler(
             beta_start=0.00085,
             beta_end=0.012,
@@ -39,6 +37,7 @@ class ConsistentLocalEdit:
             "CompVis/stable-diffusion-v1-4", revision="fp16", scheduler=self.scheduler
         )
         self.pipeline = self.pipeline.to(cfg.device)
+        self.clip, self.clip_tokenizer = self.pipeline.text_encoder, self.pipeline.tokenizer
 
     def get_inverse_latents(self, keyframes, original_prompt_embeds, vae):
         # format keyframes
@@ -51,7 +50,7 @@ class ConsistentLocalEdit:
             init_latents, self.pipeline.unet, self.scheduler, original_prompt_embeds
         )
         # pipeline's `prepare_latents` has scaled the latents by `init_noise_sigma`, so we need to pre-scale it back
-        return latents[-1] / self.pipeline.scheduler.init_noise_sigma
+        return latents
 
     def process_prompts(self, cfg):
         _, embedding_temp = get_tokens_embeds(self.clip_tokenizer, self.clip, "", cfg)
@@ -203,6 +202,7 @@ class ConsistentLocalEdit:
             self.process_prompts(cfg)
         )
 
+
         latents = self.get_inverse_latents(keyframes, original_promp_embeds, self.pipeline.vae)
 
         init_shared_norm(self.pipeline, full_attn_share=False)
@@ -212,7 +212,7 @@ class ConsistentLocalEdit:
 
         segms = segms.reshape(batch_size, original_h, original_w)
         processed_keyframes = self.pipeline(
-            latents=latents,
+            latents=latents[-1] / self.pipeline.scheduler.init_noise_sigma,
             prompt_embeds=edit_prompt_embeds,
             callback_on_step_end=callback_factory(latents, segms),
             callback_on_step_end_tensor_inputs=['latents'],
