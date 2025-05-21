@@ -10,7 +10,7 @@ from src.model.utils import (
     get_tokens_embeds,
     compute_fixed_indices,
     concat_first,
-    scheduler_wrapper,
+    callback_factory,
 )
 from diffusers import StableDiffusionPipeline, DDIMScheduler
 from src.utils import get_keyframes, save_processed_keyframes
@@ -164,11 +164,6 @@ class ConsistentLocalEdit:
                 else:
                     attn_procs[name] = SharedCrossAttentionProcessor()
         unet.set_attn_processor(attn_procs)
-    
-    def prepare_scheduler(self, pipeline, init_latents, mask):
-        original_scheduler = pipeline.scheduler
-        new_scheduler = scheduler_wrapper(init_latents, original_scheduler, mask)
-        pipeline.scheduler = new_scheduler
 
     def process(self, cfg):
         """
@@ -181,6 +176,8 @@ class ConsistentLocalEdit:
 
 
         segms = []
+        original_h, original_w = 0, 0
+        batch_size = keyframes.shape[0]
         for idx, frame in enumerate(tqdm(keyframes)):
             segm = np.array(Image.open(f"{cfg.keyframe_path}/segm_{idx}.png").convert("L"))
             segm = np.where(segm == 255, 1, 0)
@@ -190,6 +187,7 @@ class ConsistentLocalEdit:
                     (w // 8, h // 8), resample=Image.NEAREST
                 )
             )
+            original_h, original_w = h // 8, w // 8
             segms.append(torch.tensor(segm.flatten()))
         
         segms = torch.stack(segms).to(cfg.device)
@@ -211,11 +209,13 @@ class ConsistentLocalEdit:
         self.init_attention_processors(
             self.pipeline, self_attn_mask, cross_attn_mask, fixed_token_indices, full_attn_share=False
         )
-        self.prepare_scheduler(self.pipeline, latents, segms)
-        
+
+        segms = segms.reshape(batch_size, original_h, original_w)
         processed_keyframes = self.pipeline(
             latents=latents,
             prompt_embeds=edit_prompt_embeds,
+            callback_on_step_end=callback_factory(latents, segms),
+            callback_on_step_end_tensor_inputs=['latents'],
         ).images
 
         save_processed_keyframes(processed_keyframes, cfg)

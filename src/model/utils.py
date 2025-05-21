@@ -9,42 +9,15 @@ from typing import Optional
 T = torch.Tensor
 
 
-class scheduler_wrapper(DDIMScheduler):
-    def __init__(self, init_latents, original_scheduler, mask, copy_background=True):
-        super().__init__()
-        self.init_latents = init_latents
-        self.original_scheduler = original_scheduler
-        self.copy_background = copy_background
-        self.mask = mask # 1 for main body, 0 for background
-    
-    def step(
-        self,
-        model_output: torch.Tensor,
-        timestep: int,
-        sample: torch.Tensor,
-        eta: float = 0.0,
-        use_clipped_model_output: bool = False,
-        generator=None,
-        variance_noise: Optional[torch.Tensor] = None,
-        return_dict: bool = True,
-    ):
-        output = self.original_scheduler.step(
-            model_output,
-            timestep,
-            sample,
-            eta=eta,
-            use_clipped_model_output=use_clipped_model_output,
-            generator=generator,
-            variance_noise=variance_noise,
-            return_dict=return_dict,
-        )
-        if self.copy_background:
-            init_latent_mask = self.init_latents[-timestep - 1].to(output.device)
-            output = (init_latent_mask * (1 - self.mask)) + (output * self.mask)
-        return output
+def callback_factory(init_latents, mask):
+    def copy_background_callback(pipeline, step, timestep, callback_kwargs):
+        latents = callback_kwargs["latents"]
+        init_latent_mask = init_latents[-step - 1].to(latents.device)
+        latents = (init_latent_mask * (1 - mask)) + (latents * mask)
+        callback_kwargs["latents"] = latents
+        return callback_kwargs
 
-    def __getattr__(self, name):
-        return getattr(self.original_scheduler, name)
+    return copy_background_callback
 
 
 def get_clip(cfg):
