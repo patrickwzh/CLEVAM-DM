@@ -24,13 +24,13 @@ class ConsistentLocalEdit:
         )
         self.brushnet = BrushNetModel.from_pretrained(
             brushnet_path, torch_dtype=torch.float16
-        )
+        ).to(cfg.device)
         self.pipeline = StableDiffusionBrushNetPipeline.from_pretrained(
             base_model_path,
             brushnet=self.brushnet,
             torch_dtype=torch.float16,
             low_cpu_mem_usage=False,
-        )
+        ).to(cfg.device)
         self.pipeline.scheduler = UniPCMultistepScheduler.from_config(
             self.pipeline.scheduler.config
         )

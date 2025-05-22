@@ -48,7 +48,7 @@ def adain(feat: T) -> T:
     feat = feat * feat_style_std + feat_style_mean
     return feat
 
-def get_segmentation_masks(cfg, keyframes):
+def get_segmentation_masks(cfg, keyframes, save_segm=True):
     maskformer_cfg = setup_cfg(cfg.maskformer_path)
     maskformer_model = build_model(maskformer_cfg).to(cfg.device)
     checkpointer = DetectionCheckpointer(maskformer_model)
@@ -56,14 +56,21 @@ def get_segmentation_masks(cfg, keyframes):
     maskformer_model.eval()
     checkpointer = DetectionCheckpointer(maskformer_model)
     checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
+    maskformer_model = maskformer_model.to(cfg.device)
     aug = transforms.ResizeShortestEdge(
         [maskformer_cfg.INPUT.MIN_SIZE_TEST, maskformer_cfg.INPUT.MIN_SIZE_TEST], maskformer_cfg.INPUT.MAX_SIZE_TEST
     )
     keyframes = np.array(keyframes)
-    segms = infer_maskformer(keyframes, cfg.prompts.original_inside, maskformer_model, aug)
-    for i, segm in enumerate(segms):
-        segm = segm * 255
-        segm = segm.astype(np.uint8)
-        Image.fromarray(segm).save(f"{cfg.keyframe_path}/segm_{i}.png")
-    segms = [np.expand_dims(segm, axis=-1) for segm in segms]
-    return segms
+    chunk_size = cfg.chunk_size
+    segms_all = []
+    for i in tqdm(range(0, len(keyframes), chunk_size), desc="Processing keyframes"):
+        chunk = keyframes[i:i + chunk_size]
+        segms = infer_maskformer(chunk, cfg.prompts.original_inside, maskformer_model, aug)
+        if save_segm:
+            for j, segm in enumerate(segms):
+                segm_img = segm * 255
+                segm_img = segm_img.astype(np.uint8)
+                Image.fromarray(segm_img).save(f"{cfg.keyframe_path}/segm_{i + j}.png")
+        segms = [np.expand_dims(segm, axis=0) for segm in segms]
+        segms_all.extend(segms)
+    return np.concatenate(segms_all, axis=0)
