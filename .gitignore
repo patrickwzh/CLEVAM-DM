@@ -2,4 +2,4 @@ checkpoints/
 input/
 outputs/
 __pycache__
-
+data/
