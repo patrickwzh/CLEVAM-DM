@@ -2,6 +2,13 @@
 
 by lkh
 
+- Use `lang-sam` for segmentation
+- Update `requirements.txt`
+
+## 2025.05.22
+
+by lkh
+
 - Rebuild pipeline with BrushNet
 - Before running the pipeline, download `segmentation_mask_brushnet_ckpt` and `realisticVisionV60B1_v51VAE` from https://drive.google.com/drive/folders/1fqmS1CEOvXCxNWFrsSYd_jHYXxrydh1n and fill `brushnet_path` in `config.yaml`.
 - Comment out a line of code that calls `_init_weights` if error occurs.

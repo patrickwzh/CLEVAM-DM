@@ -3,3 +3,4 @@ input/
 outputs/
 __pycache__
 data/
+video_output/

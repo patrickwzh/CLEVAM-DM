@@ -6,11 +6,12 @@ from tqdm import tqdm
 from PIL import Image
 import numpy as np
 
-from src.mask_former.mask_former_model import MaskFormer
-from src.mask_former.maskformer import setup_cfg, infer_maskformer
-from detectron2.modeling import build_model
-from detectron2.checkpoint import DetectionCheckpointer
-import detectron2.data.transforms as transforms
+# from src.mask_former.mask_former_model import MaskFormer
+# from src.mask_former.maskformer import setup_cfg, infer_maskformer
+# from detectron2.modeling import build_model
+# from detectron2.checkpoint import DetectionCheckpointer
+# import detectron2.data.transforms as transforms
+from lang_sam import LangSAM
 
 T = torch.Tensor
 
@@ -48,19 +49,33 @@ def adain(feat: T) -> T:
     feat = feat * feat_style_std + feat_style_mean
     return feat
 
+# def get_segmentation_masks(cfg, keyframes):
+#     maskformer_cfg = setup_cfg(cfg.maskformer_path)
+#     maskformer_model = build_model(maskformer_cfg).to(cfg.device)
+#     checkpointer = DetectionCheckpointer(maskformer_model)
+#     checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
+#     maskformer_model.eval()
+#     checkpointer = DetectionCheckpointer(maskformer_model)
+#     checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
+#     aug = transforms.ResizeShortestEdge(
+#         [maskformer_cfg.INPUT.MIN_SIZE_TEST, maskformer_cfg.INPUT.MIN_SIZE_TEST], maskformer_cfg.INPUT.MAX_SIZE_TEST
+#     )
+#     keyframes = np.array(keyframes)
+#     segms = infer_maskformer(keyframes, cfg.prompts.original_inside, maskformer_model, aug)
+#     for i, segm in enumerate(segms):
+#         segm = segm * 255
+#         segm = segm.astype(np.uint8)
+#         Image.fromarray(segm).save(f"{cfg.keyframe_path}/segm_{i}.png")
+#     segms = [np.expand_dims(segm, axis=-1) for segm in segms]
+#     return segms
+
 def get_segmentation_masks(cfg, keyframes):
-    maskformer_cfg = setup_cfg(cfg.maskformer_path)
-    maskformer_model = build_model(maskformer_cfg).to(cfg.device)
-    checkpointer = DetectionCheckpointer(maskformer_model)
-    checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
-    maskformer_model.eval()
-    checkpointer = DetectionCheckpointer(maskformer_model)
-    checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
-    aug = transforms.ResizeShortestEdge(
-        [maskformer_cfg.INPUT.MIN_SIZE_TEST, maskformer_cfg.INPUT.MIN_SIZE_TEST], maskformer_cfg.INPUT.MAX_SIZE_TEST
-    )
-    keyframes = np.array(keyframes)
-    segms = infer_maskformer(keyframes, cfg.prompts.original_inside, maskformer_model, aug)
+    keyframes = [Image.fromarray(keyframe).convert('RGB') for keyframe in keyframes]
+    model = LangSAM()
+    batch_size = len(keyframes)
+    prompts = [cfg.prompts.original_inside] * batch_size
+    segms = model.predict(keyframes, prompts)
+    segms = [segm["masks"][0] for segm in segms]
     for i, segm in enumerate(segms):
         segm = segm * 255
         segm = segm.astype(np.uint8)
