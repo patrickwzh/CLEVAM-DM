@@ -45,7 +45,7 @@ def build_flow_estimator(name, device="cuda"):
             mixed_precision=True, alternate_corr=False, small=False
         )
         model = RAFT(args)
-        ckpt = "checkpoints/RAFT/raft-sintel.pth"
+        ckpt = "/mnt/d/DL2025/CLEVAM-DM/checkpoints/raft-sintel.pth"
         model.load_state_dict(
             {k.replace("module.", ""): v for k, v in torch.load(ckpt).items()}
         )
@@ -70,7 +70,7 @@ def build_flow_estimator(name, device="cuda"):
             mixed_precision=True, alternate_corr=False, small=True
         )
         model = RAFT(args)
-        ckpt = "checkpoints/RAFT/raft-small.pth"
+        ckpt = "/mnt/d/DL2025/CLEVAM-DM/checkpoints/raft-small.pth"
         model.load_state_dict(
             {k.replace("module.", ""): v for k, v in torch.load(ckpt).items()}
         )
@@ -98,7 +98,7 @@ def build_flow_estimator(name, device="cuda"):
             position_and_content=False,
         )
         model = RAFTGMA(args)
-        ckpt = "checkpoints/GMA/gma-sintel.pth"
+        ckpt = "/mnt/d/DL2025/CLEVAM-DM/checkpoints/gma-sintel.pth"
         model.load_state_dict(
             {k.replace("module.", ""): v for k, v in torch.load(ckpt).items()}
         )

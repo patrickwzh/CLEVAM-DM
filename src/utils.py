@@ -71,5 +71,5 @@ def save_processed_keyframes(processed_keyframes, cfg):
     for i, frame in enumerate(processed_keyframes):
         frame = np.array(frame)  # Convert PIL Image to numpy array (HWC, RGB)
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        output_path = os.path.join(output_dir, f"{i:04d}_keyframe_processed.png")
+        output_path = os.path.join(output_dir, f"{i:04d}.png")
         cv2.imwrite(output_path, frame)
