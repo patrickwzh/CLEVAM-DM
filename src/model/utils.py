@@ -1,95 +1,19 @@
 import torch
 import torch.nn as nn
-from transformers import CLIPModel, CLIPTokenizer
-from difflib import SequenceMatcher
 import einops
+from typing import Optional
+from tqdm import tqdm
+from PIL import Image
+import numpy as np
+
+# from src.mask_former.mask_former_model import MaskFormer
+# from src.mask_former.maskformer import setup_cfg, infer_maskformer
+# from detectron2.modeling import build_model
+# from detectron2.checkpoint import DetectionCheckpointer
+# import detectron2.data.transforms as transforms
+from lang_sam import LangSAM
 
 T = torch.Tensor
-
-def get_clip(cfg):
-    clip_model = CLIPModel.from_pretrained(
-        "openai/clip-vit-large-patch14",
-        torch_dtype=torch.float16
-    )
-    clip_tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
-    clip = clip_model.text_model
-    clip = clip.to(cfg.device)
-    return clip, clip_tokenizer
-
-
-def get_tokens_embeds(clip_tokenizer, clip, prompt, cfg):
-    tokens = clip_tokenizer(
-        prompt,
-        padding="max_length",
-        max_length=clip_tokenizer.model_max_length,
-        truncation=True,
-        return_tensors="pt",
-        return_overflowing_tokens=True
-    )
-    input_ids = tokens.input_ids.to(cfg.device)
-    embedding = clip(input_ids).last_hidden_state
-    embedding = embedding.to(torch.float32)
-    return tokens, embedding
-
-
-def compute_fixed_indices(tokens_inversion, tokens, num_tokens=38):
-    first_pad = tokens["attention_mask"].sum().item() - 1
-    tokens_inversion = tokens_inversion.input_ids.numpy()[0]
-    tokens = tokens.input_ids.numpy()[0]
-    fixed_indices = []
-    for name, a0, a1, b0, b1 in SequenceMatcher(
-        None, tokens_inversion, tokens
-    ).get_opcodes():
-        if name == "equal" and b0 < first_pad:
-            b1 = min(b1, num_tokens)
-            fixed_indices += list(range(b0, b1))
-    return torch.tensor(fixed_indices)[1:]
-
-
-def init_shared_norm(pipeline, full_attn_share=False):
-    def register_norm_forward(
-        norm_layer: nn.GroupNorm | nn.LayerNorm, full_attn_share
-    ) -> nn.GroupNorm | nn.LayerNorm:
-        if not hasattr(norm_layer, "orig_forward"):
-            setattr(norm_layer, "orig_forward", norm_layer.forward)
-        orig_forward = norm_layer.orig_forward
-
-        def only_first_forward_(hidden_states: T) -> T:
-            n = hidden_states.shape[-2]
-            hidden_states = concat_first(hidden_states, dim=-2)
-            hidden_states = orig_forward(hidden_states)
-            return hidden_states[..., :n, :]
-        
-        def full_share_forward_(hidden_states: T) -> T:
-            n = hidden_states.shape[-2]
-            hidden_states = einops.rearrange(
-                hidden_states, "(k b) n d -> k (b n) d", k=2
-            )
-            hidden_states = orig_forward(hidden_states)
-            hidden_states = einops.rearrange(
-                hidden_states, "k (b n) d -> (k b) n d", n=n
-            )
-            return hidden_states
-
-        norm_layer.forward = full_share_forward_ if full_attn_share else only_first_forward_
-
-    def get_norm_layers(
-        pipeline_, norm_layers_: dict[str, list[nn.GroupNorm | nn.LayerNorm]]
-    ):
-        if isinstance(pipeline_, nn.LayerNorm):
-            norm_layers_["layer"].append(pipeline_)
-        elif isinstance(pipeline_, nn.GroupNorm):
-            norm_layers_["group"].append(pipeline_)
-        else:
-            for layer in pipeline_.children():
-                get_norm_layers(layer, norm_layers_)
-
-    norm_layers = {"group": [], "layer": []}
-    get_norm_layers(pipeline.unet, norm_layers)
-    for layer in norm_layers["layer"]:
-        register_norm_forward(layer, full_attn_share)
-    for layer in norm_layers["group"]:
-        register_norm_forward(layer, full_attn_share)
 
 
 def expand_first(
@@ -125,66 +49,36 @@ def adain(feat: T) -> T:
     feat = feat * feat_style_std + feat_style_mean
     return feat
 
+# def get_segmentation_masks(cfg, keyframes):
+#     maskformer_cfg = setup_cfg(cfg.maskformer_path)
+#     maskformer_model = build_model(maskformer_cfg).to(cfg.device)
+#     checkpointer = DetectionCheckpointer(maskformer_model)
+#     checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
+#     maskformer_model.eval()
+#     checkpointer = DetectionCheckpointer(maskformer_model)
+#     checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
+#     aug = transforms.ResizeShortestEdge(
+#         [maskformer_cfg.INPUT.MIN_SIZE_TEST, maskformer_cfg.INPUT.MIN_SIZE_TEST], maskformer_cfg.INPUT.MAX_SIZE_TEST
+#     )
+#     keyframes = np.array(keyframes)
+#     segms = infer_maskformer(keyframes, cfg.prompts.original_inside, maskformer_model, aug)
+#     for i, segm in enumerate(segms):
+#         segm = segm * 255
+#         segm = segm.astype(np.uint8)
+#         Image.fromarray(segm).save(f"{cfg.keyframe_path}/segm_{i}.png")
+#     segms = [np.expand_dims(segm, axis=-1) for segm in segms]
+#     return segms
 
-def masked_scaled_dot_product_attention(
-    attn, query, key, value, attn_mask, fixed_token_indices=None, attn_scale=2.5
-):
-    """
-    attn: attention processor
-    query: (batch_size, num_heads, seq1_length, dim_head)
-    key: (batch_size, num_heads, seq2_length, dim_head)
-    value: (batch_size, num_heads, seq2_length, dim_head)
-    attn_mask: (batch_size, seq1_length, seq2_length), inside is 1, outside is 0
-    fixed_token_indices: (batch_size, num_fixed_indices)
-    """
-    logits = torch.einsum("bhqd,bhkd->bhqk", query, key) * attn.scale
-    probs = logits.softmax(dim=-1)  # (batch_size, num_heads, seq1_length, seq2_length)
-    if attn_mask is not None:
-        attn_mask = attn_mask.unsqueeze(1).expand(-1, query.shape[1], -1, -1)
-        print(f"shapes: {probs.shape}, {attn_mask.shape}")
-        probs = probs * attn_mask
-    if fixed_token_indices is not None:
-        inside_indices = torch.tensor([i for i in range(1, 39)])
-        outside_indices = torch.tensor([i for i in range(39, 77)])
-        probs[:, :, :, inside_indices] *= attn_scale
-        probs[:, :, :, outside_indices] *= attn_scale
-        probs[:, :, :, fixed_token_indices] /= attn_scale
-    return torch.einsum("bhqk,bhkd->bhqd", probs, value)
-
-
-def inversion(x, model, scheduler, original_prompt_embeds):
-    seq = scheduler.timesteps
-    seq = torch.flip(seq, dims=(0,))
-    b = scheduler.betas
-    b = b.to(x.device)
-
-    with torch.no_grad():
-        n = x.size(0)
-        seq_next = [-1] + list(seq[:-1])
-        seq_iter = seq_next[1:]
-        seq_next_iter = seq[1:]
-
-        x0_preds = []
-        xs = [x]
-        for index, (i, j) in enumerate(zip(seq_iter, seq_next_iter)):
-            t = (torch.ones(n) * i).to(x.device)
-            next_t = (torch.ones(n) * j).to(x.device)
-            at = (1 - b).cumprod(dim=0).index_select(0, t.long())
-            if next_t.sum() == -next_t.shape[0]:
-                at_next = torch.ones_like(at)
-            else:
-                at_next = (1 - b).cumprod(dim=0).index_select(0, next_t.long())
-
-            xt = xs[-1].to(x.device)
-
-            # set_timestep(model, 0.0)
-
-            et = model(xt, t, encoder_hidden_states=original_prompt_embeds).sample
-
-            x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()
-            x0_preds.append(x0_t.to("cpu"))
-            c2 = (1 - at_next).sqrt()
-            xt_next = at_next.sqrt() * x0_t + c2 * et
-            xs.append(xt_next.to("cpu"))
-
-    return xs, x0_preds
+def get_segmentation_masks(cfg, keyframes):
+    keyframes = [Image.fromarray(keyframe).convert('RGB') for keyframe in keyframes]
+    model = LangSAM()
+    batch_size = len(keyframes)
+    prompts = [cfg.prompts.original_inside] * batch_size
+    segms = model.predict(keyframes, prompts)
+    segms = [segm["masks"][0] for segm in segms]
+    for i, segm in enumerate(segms):
+        segm = segm * 255
+        segm = segm.astype(np.uint8)
+        Image.fromarray(segm).save(f"{cfg.keyframe_path}/segm_{i}.png")
+    segms = [np.expand_dims(segm, axis=-1) for segm in segms]
+    return segms

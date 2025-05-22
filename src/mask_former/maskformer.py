@@ -42,7 +42,7 @@ def infer_maskformer(imgs, source_prompt, maskformer_model, aug):
         predictions = maskformer_model(inputs)
         predictions = torch.stack([pred["sem_seg"] for pred in predictions])
         # predictions = predictions.detach().cpu().numpy()
-    print(f"preds: {predictions}")
+    # print(f"preds: {predictions}")
     mask_preds = predictions.argmax(dim=1)
     mask_preds = (mask_preds == category_idx).to(torch.uint8)
     mask_preds = mask_preds.detach().cpu().numpy()

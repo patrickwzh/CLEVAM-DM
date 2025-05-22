@@ -54,11 +54,9 @@ def get_keyframes(cfg):
     keyframes = []
     for path in keyframe_paths:
         frame = cv2.imread(path)
-        frame = torch.from_numpy(frame)
         keyframes.append(frame)
 
-    return torch.stack(keyframes)
-
+    return keyframes
 
 def save_processed_keyframes(processed_keyframes, cfg):
     """

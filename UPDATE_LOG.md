@@ -1,3 +1,47 @@
+## 2025.05.22
+
+by lkh
+
+- Use `lang-sam` for segmentation
+- Update `requirements.txt`
+
+## 2025.05.22
+
+by lkh
+
+- Rebuild pipeline with BrushNet
+- Before running the pipeline, download `segmentation_mask_brushnet_ckpt` and `realisticVisionV60B1_v51VAE` from https://drive.google.com/drive/folders/1fqmS1CEOvXCxNWFrsSYd_jHYXxrydh1n and fill `brushnet_path` in `config.yaml`.
+- Comment out a line of code that calls `_init_weights` if error occurs.
+- **TODO**
+  - replace maskformer with a better segmentation model.
+  - Update `Requirements.txt`, `numpy >= 2.0` can also work now.
+
+## 2025.05.21
+
+by lkh, wzh
+
+- Pipeline work for multiple images
+- The image color is too light, may be due to some scale problems
+
+## 2025.05.21
+
+by lkh, wzh
+
+- Use `copy background` to improve the quality of the output image
+- The pipeline can work well for single image now!
+- **Problem**:
+  - The VRAM usage is too high, need to find the problem and optimize.
+
+## 2025.05.10
+
+by lkh
+
+- Change shepe guided diffusion only to the first layer of unet
+- The pipeline work for single image now
+- **Problems**:
+  - `get_inversion_latents` function does not work for batch size > 1
+  - The output cannot reserve the shape
+
 ## 2025.05.19
 
 by lhz

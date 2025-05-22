@@ -2,5 +2,10 @@ checkpoints/
 input/
 outputs/
 __pycache__
+<<<<<<< HEAD
 test/
 test_output/
+=======
+data/
+video_output/
+>>>>>>> 29fd6d24aa8decbd07edbd350f383a698236ad66
