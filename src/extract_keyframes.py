@@ -5,19 +5,14 @@ from src.utils import extract_keyframes, get_keyframes
 from src.model.consistent_local_edit import ConsistentLocalEdit
 from src.optical_flow.optical_flow import frame_interpolation
 
+
 def main():
     print("Reading config file...")
-    cfg = OmegaConf.load('src/config/config.yaml')
+    cfg = OmegaConf.load("src/config/config.yaml")
     print("Config file loaded. Extracting keyframes...")
     extract_keyframes(cfg)
-    print("Keyframes extracted. Beginning consistent local edit...")
-    model = ConsistentLocalEdit(cfg)
-    model.process(cfg)
-    print("Consistent local edit completed. Beginning frame interpolation via optical flow warping...")
+    print("Keyframes extracted.")
 
-    frame_interpolation(cfg)
-    print("Frame interpolation completed. Enjoy!")
-    
 
 if __name__ == "__main__":
     main()

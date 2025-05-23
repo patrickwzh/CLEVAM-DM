@@ -9,7 +9,6 @@ from PIL import Image
 import cv2
 import os
 from src.model.attention_processors import Handler, StyleAlignedArgs
-from src.model.utils import get_segmentation_masks
 from src.utils import (
     get_keyframes,
     save_processed_keyframes,
@@ -24,23 +23,23 @@ class ConsistentLocalEdit:
         )
         self.brushnet = BrushNetModel.from_pretrained(
             brushnet_path, torch_dtype=torch.float16
-        ).to(cfg.device)
+        )
+        self.brushnet = self.brushnet
         self.pipeline = StableDiffusionBrushNetPipeline.from_pretrained(
             base_model_path,
             brushnet=self.brushnet,
             torch_dtype=torch.float16,
             low_cpu_mem_usage=False,
-        ).to(cfg.device)
+        )
         self.pipeline.scheduler = UniPCMultistepScheduler.from_config(
             self.pipeline.scheduler.config
         )
-        self.pipeline.to(cfg.device)
 
         self.pipeline.safety_checker = lambda images, clip_input: (
             images,
             [False] * len(images),
         )
-        self.pipeline.enable_model_cpu_offload()
+        self.pipeline.enable_model_cpu_offload(device=cfg.device)
         handler = Handler(self.pipeline)
         sa_args = StyleAlignedArgs(
             share_group_norm=True,
@@ -58,7 +57,9 @@ class ConsistentLocalEdit:
 
     def process(self, cfg):
         keyframes = get_keyframes(cfg)
-        masks = get_segmentation_masks(cfg, keyframes)
+        print("\tLoading segmentation masks...")
+        masks = np.load(os.path.join(cfg.keyframe_path, "masks.npy"))
+        print("\tSegmentation masks loaded.")
         init_images = [
             keyframe * (1 - mask) for keyframe, mask in zip(keyframes, masks)
         ]
@@ -75,7 +76,8 @@ class ConsistentLocalEdit:
         ]
         prompts = [cfg.prompts.edit_inside] * batch_size
 
-        generator = torch.Generator("cuda").manual_seed(42)
+        generator = torch.Generator(cfg.device).manual_seed(42)
+        print("\tProcessing keyframes...")
         images = self.pipeline(
             prompts,
             init_images,
@@ -83,6 +85,8 @@ class ConsistentLocalEdit:
             num_inference_steps=cfg.num_inference_steps,
             generator=generator,
             brushnet_conditioning_scale=1.0,
+            guidance_scale=cfg.guidance_scale,
         ).images
+        print("\tKeyframes processed. Saving images...")
 
         save_processed_keyframes(images, cfg)

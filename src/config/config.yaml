@@ -7,11 +7,12 @@ brushnet_path: /home/wzh/nfsdata/projects/CLEVAM-DM/data/ckpt
 num_inference_steps: 50
 interval: 24 # interval between frames, 70 for 4 images
 prompts:
-  original_inside: person
+  original_inside: skiing person in the front
   edit_inside: skiing polar bear
   original_outside: background
   edit_outside: background
 
+guidance_scale: 3.5
 chunk_size: 18
 
 optical_flow:

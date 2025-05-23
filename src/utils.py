@@ -133,8 +133,3 @@ def save_processed_video(frames, cfg):
         output_movie.write(frame)
     output_movie.release()
     print(f"Processed video saved to {output_path}")
-
-def get_keyframe_indices(cfg):
-    kfs = get_keyframes(cfg)
-    indices = np.arange(len(kfs)) * cfg.interval
-    return indices

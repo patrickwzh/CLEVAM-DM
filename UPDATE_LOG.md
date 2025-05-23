@@ -1,5 +1,21 @@
 ## 2025.05.22
 
+by wzh
+
+- Implement optical flow image warping for video reconstruction
+- Merge `lang-sam` with optical flow pipeline
+- Write running script for overall workflow (prevent OOM)
+
+
+## 2025.05.22
+
+by lkh
+
+- Use `lang-sam` for segmentation
+- Update `requirements.txt`
+
+## 2025.05.22
+
 by lkh
 
 - Rebuild pipeline with BrushNet

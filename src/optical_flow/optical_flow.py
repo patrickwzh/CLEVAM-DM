@@ -77,34 +77,37 @@ def interpolate_forward_backward(forwards, backwards):
     return interpolates
 
 def frame_interpolation(cfg):
-    # model = ptlflow.get_model(cfg.optical_flow.model_name, ckpt_path=cfg.optical_flow.ckpt_path)
-    # model = model.to(cfg.device)
+    model = ptlflow.get_model(cfg.optical_flow.model_name, ckpt_path=cfg.optical_flow.ckpt_path)
+    model = model.to(cfg.device)
     frames = utils.get_frames(cfg)
     # # # # # Convert frames from HWC (BGR) to CHW (RGB)
     # # # # # frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in frames]
-    # forward_flows, backward_flows = get_optical_flows(model, frames, cfg.chunk_size)
+    print("\tGetting optical flows...")
+    forward_flows, backward_flows = get_optical_flows(model, frames, cfg.chunk_size)
     # # # # print(f"flow shape: {flows.shape}")
     # # # os.makedirs(cfg.output_dir, exist_ok=True)
     # # np.save(os.path.join(cfg.output_dir, "flows_rev.npy"), flows)
     # np.save(os.path.join(cfg.output_dir, "flows_fwd.npy"), forward_flows)
     # np.save(os.path.join(cfg.output_dir, "flows_bwd.npy"), backward_flows)
-    forward_flows = np.load(os.path.join(cfg.output_dir, "flows_fwd.npy"))
-    backward_flows = np.load(os.path.join(cfg.output_dir, "flows_bwd.npy"))
-    print(f"shapes: {forward_flows.shape}, {backward_flows.shape}")
+    # forward_flows = np.load(os.path.join(cfg.output_dir, "flows_fwd.npy"))
+    # backward_flows = np.load(os.path.join(cfg.output_dir, "flows_bwd.npy"))
+    # print(f"shapes: {forward_flows.shape}, {backward_flows.shape}")
     keyframes = utils.get_processed_keyframes(cfg)
     # keyframes = utils.get_keyframes(cfg)
     # # keyframes = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in keyframes]
-    # masks = get_segmentation_masks(cfg, frames, save_segm=False)
+    print("\tOptical flows obtained. Getting segmentation masks for every frame...")
+    masks = get_segmentation_masks(cfg, frames, save_segm=False)
     # np.save(os.path.join(cfg.output_dir, "masks_rev.npy"), masks)
-    masks = np.load(os.path.join(cfg.output_dir, "masks.npy"))
-    masks = np.expand_dims(masks, axis=-1)
-    print(f"masks shape: {masks.shape}")
+    # masks = np.load(os.path.join(cfg.output_dir, "masks.npy"))
+    # masks = np.expand_dims(masks, axis=-1)
+    # print(f"masks shape: {masks.shape}")
 
     processed_frames = []
     next_keyframes = keyframes[1:] + [frames[-1]]
     tot_idx_len = len(keyframes)
     tot_frames = len(frames)
-    for idx, (keyframe, next_keyframe) in enumerate(zip(keyframes, next_keyframes)):
+    print("\tSegmentation finished. Warping frames...")
+    for idx, (keyframe, next_keyframe) in tqdm(enumerate(zip(keyframes, next_keyframes)), desc="Processing keyframes"):
         processed_frames.append(keyframe)
         if idx == tot_idx_len - 1:
             warped_frame_forward = keyframe
@@ -130,8 +133,9 @@ def frame_interpolation(cfg):
             warped_frames_backward.pop()
             warped_frames_backward.reverse()
             processed_frames.extend(interpolate_forward_backward(warped_frames_forward, warped_frames_backward))
-    np.savez_compressed(os.path.join(cfg.output_dir, "processed_frames.npz"), frames=np.array(processed_frames))
-    processed_frames = np.load(os.path.join(cfg.output_dir, "processed_frames.npz"))['frames']
+    # np.savez_compressed(os.path.join(cfg.output_dir, "processed_frames.npz"), frames=np.array(processed_frames))
+    # processed_frames = np.load(os.path.join(cfg.output_dir, "processed_frames.npz"))['frames']
     # processed_frames = processed_frames.astype(np.uint8)
     # processed_frames = np.load(os.path.join(cfg.output_dir, "processed_frames.npz"))['frames']
+    print("\tWarping finished. Saving processed video...")
     utils.save_processed_video(processed_frames, cfg)

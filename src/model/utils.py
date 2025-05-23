@@ -6,11 +6,7 @@ from tqdm import tqdm
 from PIL import Image
 import numpy as np
 
-from src.mask_former.mask_former_model import MaskFormer
-from src.mask_former.maskformer import setup_cfg, infer_maskformer
-from detectron2.modeling import build_model
-from detectron2.checkpoint import DetectionCheckpointer
-import detectron2.data.transforms as transforms
+from lang_sam import LangSAM
 
 T = torch.Tensor
 
@@ -49,28 +45,25 @@ def adain(feat: T) -> T:
     return feat
 
 def get_segmentation_masks(cfg, keyframes, save_segm=True):
-    maskformer_cfg = setup_cfg(cfg.maskformer_path)
-    maskformer_model = build_model(maskformer_cfg).to(cfg.device)
-    checkpointer = DetectionCheckpointer(maskformer_model)
-    checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
-    maskformer_model.eval()
-    checkpointer = DetectionCheckpointer(maskformer_model)
-    checkpointer.load(maskformer_cfg.MODEL.WEIGHTS)
-    maskformer_model = maskformer_model.to(cfg.device)
-    aug = transforms.ResizeShortestEdge(
-        [maskformer_cfg.INPUT.MIN_SIZE_TEST, maskformer_cfg.INPUT.MIN_SIZE_TEST], maskformer_cfg.INPUT.MAX_SIZE_TEST
-    )
-    keyframes = np.array(keyframes)
-    chunk_size = cfg.chunk_size
+    keyframes = [Image.fromarray(keyframe).convert('RGB') for keyframe in keyframes]
+    model = LangSAM(device=cfg.device)
     segms_all = []
-    for i in tqdm(range(0, len(keyframes), chunk_size), desc="Processing keyframes"):
-        chunk = keyframes[i:i + chunk_size]
-        segms = infer_maskformer(chunk, cfg.prompts.original_inside, maskformer_model, aug)
-        if save_segm:
-            for j, segm in enumerate(segms):
-                segm_img = segm * 255
-                segm_img = segm_img.astype(np.uint8)
-                Image.fromarray(segm_img).save(f"{cfg.keyframe_path}/segm_{i + j}.png")
-        segms = [np.expand_dims(segm, axis=0) for segm in segms]
-        segms_all.extend(segms)
-    return np.concatenate(segms_all, axis=0)
+    chunk_size = min(cfg.chunk_size, len(keyframes))
+    with torch.no_grad():
+        for i in tqdm(range(0, len(keyframes), chunk_size), desc="Processing keyframes"):
+            end = min(i + chunk_size, len(keyframes))
+            chunk = keyframes[i:end]
+            prompts_chunk = [cfg.prompts.original_inside] * len(chunk)
+            segms = model.predict(chunk, prompts_chunk)
+            segms = [segm["masks"][0] for segm in segms]
+            if save_segm:
+                for j, segm in enumerate(segms):
+                    segm = segm * 255
+                    segm = segm.astype(np.uint8)
+                    Image.fromarray(segm).save(f"{cfg.keyframe_path}/segm_{i + j}.png")
+            segms = [np.expand_dims(segm, axis=0) for segm in segms]
+            segms_all.extend(segms)
+        segms_all = np.concatenate(segms_all, axis=0)
+        segms_all = np.expand_dims(segms_all, axis=-1)
+    np.save(f"{cfg.keyframe_path}/masks.npy", segms_all)
+    return segms_all
