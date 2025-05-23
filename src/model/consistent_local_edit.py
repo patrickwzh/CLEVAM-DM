@@ -40,6 +40,8 @@ class ConsistentLocalEdit:
             [False] * len(images),
         )
         self.pipeline.enable_model_cpu_offload(device=cfg.device)
+        self.pipeline.enable_attention_slicing()
+        self.pipeline.enable_vae_slicing()
         handler = Handler(self.pipeline)
         sa_args = StyleAlignedArgs(
             share_group_norm=True,
@@ -57,9 +59,9 @@ class ConsistentLocalEdit:
 
     def process(self, cfg):
         keyframes = get_keyframes(cfg)
-        print("\tLoading segmentation masks...")
+        print("Loading segmentation masks...")
         masks = np.load(os.path.join(cfg.keyframe_path, "masks.npy"))
-        print("\tSegmentation masks loaded.")
+        print("Segmentation masks loaded.")
         init_images = [
             keyframe * (1 - mask) for keyframe, mask in zip(keyframes, masks)
         ]
@@ -74,10 +76,11 @@ class ConsistentLocalEdit:
             Image.fromarray(mask.astype(np.uint8).repeat(3, -1) * 255).convert("RGB")
             for mask in masks
         ]
+        print(f"len: {len(init_images)}, {len(masks)}")
         prompts = [cfg.prompts.edit_inside] * batch_size
 
         generator = torch.Generator(cfg.device).manual_seed(42)
-        print("\tProcessing keyframes...")
+        print("Processing keyframes...")
         images = self.pipeline(
             prompts,
             init_images,
@@ -87,6 +90,6 @@ class ConsistentLocalEdit:
             brushnet_conditioning_scale=1.0,
             guidance_scale=cfg.guidance_scale,
         ).images
-        print("\tKeyframes processed. Saving images...")
+        print("Keyframes processed. Saving images...")
 
-        save_processed_keyframes(images, cfg)
+        save_processed_keyframes(images, cfg, RGB2BGR=False)

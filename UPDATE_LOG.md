@@ -1,3 +1,16 @@
+## 2025.05.23
+
+by wzh
+
+- Optimize memory usage for pipeline
+- Debug overall workflow
+- Update `README.md` with running instructions
+- TODOs
+  - Update instructions for downloading pretrained weights in `README.md`
+  - Clear up the repo
+  - Better optical flow pipeline?
+
+
 ## 2025.05.22
 
 by wzh

@@ -28,6 +28,12 @@ def extract_keyframes(cfg):
         ret, frame = cap.read()
         if not ret:
             break
+        # Resize frame to nearest multiple of 8 (smaller than original)
+        h, w = frame.shape[:2]
+        new_h = (h // 8) * 8
+        new_w = (w // 8) * 8
+        if new_h != h or new_w != w:
+            frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
         if frame_count % interval == 0:
             keyframe_path_id = os.path.join(keyframe_path, f"keyframe_{keyframe_id:04d}.png")
@@ -103,7 +109,7 @@ def get_processed_keyframes(cfg):
 
     return keyframes
 
-def save_processed_keyframes(processed_keyframes, cfg):
+def save_processed_keyframes(processed_keyframes, cfg, RGB2BGR=True):
     """
     Processed_keyframes: Image objects
     Save processed keyframes to cfg.output_dir/{original_idx}_keyframe_processed.png
@@ -113,7 +119,8 @@ def save_processed_keyframes(processed_keyframes, cfg):
         os.makedirs(output_dir)
     for i, frame in enumerate(processed_keyframes):
         frame = np.array(frame)  # Convert PIL Image to numpy array (HWC, RGB)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        if RGB2BGR:
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         output_path = os.path.join(output_dir, f"{i:04d}.png")
         cv2.imwrite(output_path, frame)
 

@@ -73,7 +73,7 @@ def interpolate_forward_backward(forwards, backwards):
     backwards = [b.astype(np.float32) for b in backwards]
     interpolates = []
     for i, (forward, backward) in enumerate(zip(forwards, backwards)):
-        interpolates.append((((tot_len - i) * forward + i * backward) / tot_len).astype(np.uint8))
+        interpolates.append((((tot_len - i) * forward.astype(np.float16) + i * backward.astype(np.float16)) / tot_len).astype(np.uint8))
     return interpolates
 
 def frame_interpolation(cfg):
@@ -95,7 +95,7 @@ def frame_interpolation(cfg):
     keyframes = utils.get_processed_keyframes(cfg)
     # keyframes = utils.get_keyframes(cfg)
     # # keyframes = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in keyframes]
-    print("\tOptical flows obtained. Getting segmentation masks for every frame...")
+    print("Optical flows obtained. Getting segmentation masks for every frame...")
     masks = get_segmentation_masks(cfg, frames, save_segm=False)
     # np.save(os.path.join(cfg.output_dir, "masks_rev.npy"), masks)
     # masks = np.load(os.path.join(cfg.output_dir, "masks.npy"))
@@ -106,8 +106,12 @@ def frame_interpolation(cfg):
     next_keyframes = keyframes[1:] + [frames[-1]]
     tot_idx_len = len(keyframes)
     tot_frames = len(frames)
-    print("\tSegmentation finished. Warping frames...")
+    print("Segmentation finished. Warping frames...")
+    print(f"shapes: {frames[0].shape}, {masks[0].shape}, {keyframes[0].shape}")
     for idx, (keyframe, next_keyframe) in tqdm(enumerate(zip(keyframes, next_keyframes)), desc="Processing keyframes"):
+        frame_idx = idx * cfg.interval
+        keyframe = keyframe * masks[frame_idx] + frames[frame_idx] * (1 - masks[frame_idx])
+        keyframe = keyframe.astype(np.uint8)
         processed_frames.append(keyframe)
         if idx == tot_idx_len - 1:
             warped_frame_forward = keyframe
@@ -116,7 +120,7 @@ def frame_interpolation(cfg):
                 flow = forward_flows[flow_idx]
                 warped_frame_forward = warp_single_flow(warped_frame_forward, flow)
                 warped_frame_forward = warped_frame_forward * masks[flow_idx] + frames[flow_idx] * (1 - masks[flow_idx])
-                processed_frames.append(warped_frame_forward)
+                processed_frames.append(warped_frame_forward.astype(np.uint8))
         else:
             warped_frames_forward, warped_frames_backward = [], []
             warped_frame_forward, warped_frame_backward = keyframe, next_keyframe
@@ -137,5 +141,5 @@ def frame_interpolation(cfg):
     # processed_frames = np.load(os.path.join(cfg.output_dir, "processed_frames.npz"))['frames']
     # processed_frames = processed_frames.astype(np.uint8)
     # processed_frames = np.load(os.path.join(cfg.output_dir, "processed_frames.npz"))['frames']
-    print("\tWarping finished. Saving processed video...")
+    print("Warping finished. Saving processed video...")
     utils.save_processed_video(processed_frames, cfg)

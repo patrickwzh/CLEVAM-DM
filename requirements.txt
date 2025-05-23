@@ -14,5 +14,7 @@ torchmetrics
 open-clip-torch
 clip
 segment_anything
+ptlflow
 git+https://github.com/luca-medeiros/lang-segment-anything.git
 git+https://github.com/TencentARC/BrushNet.git
+
