@@ -22,5 +22,5 @@ optical_flow:
   model_name: dpflow
   ckpt_path: sintel
 
-device: cuda:0
+device: cuda
 

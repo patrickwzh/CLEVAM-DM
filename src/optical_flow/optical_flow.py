@@ -10,7 +10,7 @@ from tqdm import tqdm
 from src.PerVFI.models.generators import build_generator_arch
 from src.PerVFI.models.pipeline import interpolate_single_frame
 import os
-
+import src.optical_flow.PFlowVFI_V0 as pf
 def get_optical_flows(model, imgs, chunk_size):
     """
     Get optical flow between iamges.
@@ -155,6 +155,9 @@ def grid_sample(flow, grid):
     return torch.nn.functional.grid_sample(flow, norm_grid, mode='bilinear', padding_mode='border', align_corners=True)
 
 def frame_interpolation(cfg):
+    per_vfi = pf.Network(dilate_size=7).to(cfg.device)
+    per_vfi.eval()
+    
     model = ptlflow.get_model(cfg.optical_flow.model_name, ckpt_path=cfg.optical_flow.ckpt_path)
     model = model.to(cfg.device)
     frames = utils.get_frames(cfg)
@@ -162,7 +165,12 @@ def frame_interpolation(cfg):
     # # # # # frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in frames]
     print("\tGetting optical flows...")
     forward_flows, backward_flows = get_optical_flows(model, frames, cfg.chunk_size)
+<<<<<<< HEAD
     # (N-1, 2, H, W)
+=======
+    flows_forward_tensor = torch.from_numpy(forward_flows).float().to(cfg.device)
+    flows_backward_tensor = torch.from_numpy(backward_flows).float().to(cfg.device)
+>>>>>>> 85311df63366cc0e2449a858fe9e394c3372ff9d
     # # # # print(f"flow shape: {flows.shape}")
     # # # os.makedirs(cfg.output_dir, exist_ok=True)
     # # np.save(os.path.join(cfg.output_dir, "flows_rev.npy"), flows)
@@ -172,6 +180,7 @@ def frame_interpolation(cfg):
     # backward_flows = np.load(os.path.join(cfg.output_dir, "flows_bwd.npy"))
     # print(f"shapes: {forward_flows.shape}, {backward_flows.shape}")
     keyframes = utils.get_processed_keyframes(cfg)
+    print(len(keyframes), "keyframes found")
     # keyframes = utils.get_keyframes(cfg)
     # # keyframes = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in keyframes]
     print("Optical flows obtained. Getting segmentation masks for every frame...")
