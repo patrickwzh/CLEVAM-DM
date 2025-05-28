@@ -1,3 +1,11 @@
+## 2025.05.28
+
+by wzh
+
+- Add CLE support for inversion of original image
+- Add support for only changing background
+
+
 ## 2025.05.23
 
 by wzh
