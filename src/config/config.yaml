@@ -4,6 +4,7 @@ frame_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/frames/ # path/to/frames
 output_dir: /home/wzh/nfsdata/projects/CLEVAM-DM/video_output/example1/ # path/to/output
 maskformer_path: /home/wzh/nfsdata/projects/CLEVAM-DM/src/mask_former/configs/maskformer_R50_bs32_60k.yaml
 brushnet_path: /home/wzh/nfsdata/projects/CLEVAM-DM/data/ckpt
+pervfi_path: /home/wzh/nfsdata/projects/CLEVAM-DM/
 num_inference_steps: 50
 interval: 8
 change_background: true
