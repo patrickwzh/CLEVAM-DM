@@ -60,13 +60,13 @@ with gr.Blocks(title="CLEVAM-DM") as app:
 
         with gr.Column():
             output_video = gr.Video(label="Output Video")
-            log_text = gr.Textbox(label="Log")
+            log_text = gr.Markdown("Processing log:")
     submit_btn = gr.Button("Process Video")
     submit_btn.click(
         process_video,
         inputs=[input_video, original_inside, original_outside, edit_inside, edit_outside, guidance_scale],
         outputs=[output_video, log_text],
-        show_progress="minimal"
+        show_progress="full"
     )
 
 app.launch()    

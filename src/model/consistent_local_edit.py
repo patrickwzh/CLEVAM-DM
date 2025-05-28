@@ -66,7 +66,15 @@ class ConsistentLocalEdit:
         # Convert BGR to RGB for keyframes (assuming keyframes shape is [N, C, H, W])
         keyframes = keyframes[:, [2, 1, 0], ...]
         keyframes = keyframes / 255.0
-        init_latents = vae.encode(keyframes).latent_dist.sample() * 0.18215
+        print(f"keyframes shape: {keyframes.shape}")
+        init_latents = []
+        for start in range(0, len(keyframes), 4):
+            end = min(start + 4, len(keyframes))
+            keyframes_i = keyframes[start:end]
+            print(f"keyframes_i shape: {keyframes_i.shape}")
+            init_latents.append(vae.encode(keyframes_i).latent_dist.sample() * 0.18215)
+        init_latents = torch.cat(init_latents, dim=0)
+        print(f"init_latents shape: {init_latents.shape}")
         batch_size, _, _, _ = init_latents.shape
         init_latents = init_latents.repeat(2, 1, 1, 1)
         latents = []
@@ -78,7 +86,7 @@ class ConsistentLocalEdit:
             latents_i = [latent_i.to(cfg.device) for latent_i in latents_i]
             latents_i = torch.stack(latents_i)
             latents.append(latents_i)
-        latents = torch.stack(latents, dim=1)
+        latents = torch.cat(latents, dim=1)
         latents = latents[:, :batch_size]
         # pipeline's `prepare_latents` has scaled the latents by `init_noise_sigma`, so we need to pre-scale it back
         return latents
@@ -102,6 +110,7 @@ class ConsistentLocalEdit:
         prompt_embeds = prompt_embeds.repeat(2 * len(keyframes), 1, 1)
         if cfg.do_inverse:
             init_latents = self.get_inverse_latents(keyframes, prompt_embeds, self.pipeline.vae, cfg)
+        print(f"init latents shape: {init_latents.shape}")
 
 
         init_images = [
