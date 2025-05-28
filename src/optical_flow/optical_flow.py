@@ -8,7 +8,7 @@ import src.utils as utils
 from src.model.utils import get_segmentation_masks
 from tqdm import tqdm
 import os
-
+import src.optical_flow.PFlowVFI_V0 as pf
 def get_optical_flows(model, imgs, chunk_size):
     """
     Get optical flow between iamges.
@@ -77,6 +77,9 @@ def interpolate_forward_backward(forwards, backwards):
     return interpolates
 
 def frame_interpolation(cfg):
+    per_vfi = pf.Network(dilate_size=7).to(cfg.device)
+    per_vfi.eval()
+    
     model = ptlflow.get_model(cfg.optical_flow.model_name, ckpt_path=cfg.optical_flow.ckpt_path)
     model = model.to(cfg.device)
     frames = utils.get_frames(cfg)
@@ -84,6 +87,8 @@ def frame_interpolation(cfg):
     # # # # # frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in frames]
     print("\tGetting optical flows...")
     forward_flows, backward_flows = get_optical_flows(model, frames, cfg.chunk_size)
+    flows_forward_tensor = torch.from_numpy(forward_flows).float().to(cfg.device)
+    flows_backward_tensor = torch.from_numpy(backward_flows).float().to(cfg.device)
     # # # # print(f"flow shape: {flows.shape}")
     # # # os.makedirs(cfg.output_dir, exist_ok=True)
     # # np.save(os.path.join(cfg.output_dir, "flows_rev.npy"), flows)
@@ -93,6 +98,7 @@ def frame_interpolation(cfg):
     # backward_flows = np.load(os.path.join(cfg.output_dir, "flows_bwd.npy"))
     # print(f"shapes: {forward_flows.shape}, {backward_flows.shape}")
     keyframes = utils.get_processed_keyframes(cfg)
+    print(len(keyframes), "keyframes found")
     # keyframes = utils.get_keyframes(cfg)
     # # keyframes = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in keyframes]
     print("Optical flows obtained. Getting segmentation masks for every frame...")
@@ -108,35 +114,58 @@ def frame_interpolation(cfg):
     tot_frames = len(frames)
     print("Segmentation finished. Warping frames...")
     print(f"shapes: {frames[0].shape}, {masks[0].shape}, {keyframes[0].shape}")
-    for idx, (keyframe, next_keyframe) in tqdm(enumerate(zip(keyframes, next_keyframes)), desc="Processing keyframes"):
-        frame_idx = idx * cfg.interval
-        keyframe = keyframe * masks[frame_idx] + frames[frame_idx] * (1 - masks[frame_idx])
-        keyframe = keyframe.astype(np.uint8)
-        processed_frames.append(keyframe)
-        if idx == tot_idx_len - 1:
-            warped_frame_forward = keyframe
-            for j in range(tot_frames - idx * cfg.interval - 1):
-                flow_idx = idx * cfg.interval + j
-                flow = forward_flows[flow_idx]
-                warped_frame_forward = warp_single_flow(warped_frame_forward, flow)
-                warped_frame_forward = warped_frame_forward * masks[flow_idx] + frames[flow_idx] * (1 - masks[flow_idx])
-                processed_frames.append(warped_frame_forward.astype(np.uint8))
-        else:
-            warped_frames_forward, warped_frames_backward = [], []
-            warped_frame_forward, warped_frame_backward = keyframe, next_keyframe
-            for j in range(cfg.interval):
-                forward_flow_idx = idx * cfg.interval + j
-                backward_flow_idx = (idx + 1) * cfg.interval - j - 1
-                warped_frame_forward = warp_single_flow(warped_frame_forward, forward_flows[forward_flow_idx])
-                warped_frame_forward = warped_frame_forward * masks[forward_flow_idx] + frames[forward_flow_idx] * (1 - masks[forward_flow_idx])
-                warped_frame_backward = warp_single_flow(warped_frame_backward, backward_flows[backward_flow_idx])
-                warped_frame_backward = warped_frame_backward * masks[backward_flow_idx] + frames[backward_flow_idx] * (1 - masks[backward_flow_idx])
-                warped_frames_forward.append(warped_frame_forward)
-                warped_frames_backward.append(warped_frame_backward)
-            warped_frames_forward.pop()
-            warped_frames_backward.pop()
-            warped_frames_backward.reverse()
-            processed_frames.extend(interpolate_forward_backward(warped_frames_forward, warped_frames_backward))
+    # for idx, (keyframe, next_keyframe) in tqdm(enumerate(zip(keyframes, next_keyframes)), desc="Processing keyframes"):
+    #     frame_idx = idx * cfg.interval
+    #     keyframe = keyframe * masks[frame_idx] + frames[frame_idx] * (1 - masks[frame_idx])
+    #     keyframe = keyframe.astype(np.uint8)
+    #     processed_frames.append(keyframe)
+    #     if idx == tot_idx_len - 1:
+    #         warped_frame_forward = keyframe
+    #         for j in range(tot_frames - idx * cfg.interval - 1):
+    #             flow_idx = idx * cfg.interval + j
+    #             flow = forward_flows[flow_idx]
+    #             warped_frame_forward = warp_single_flow(warped_frame_forward, flow)
+    #             warped_frame_forward = warped_frame_forward * masks[flow_idx] + frames[flow_idx] * (1 - masks[flow_idx])
+    #             processed_frames.append(warped_frame_forward.astype(np.uint8))
+    #     else:
+    #         warped_frames_forward, warped_frames_backward = [], []
+    #         warped_frame_forward, warped_frame_backward = keyframe, next_keyframe
+    #         for j in range(cfg.interval):
+    #             forward_flow_idx = idx * cfg.interval + j
+    #             backward_flow_idx = (idx + 1) * cfg.interval - j - 1
+    #             warped_frame_forward = warp_single_flow(warped_frame_forward, forward_flows[forward_flow_idx])
+    #             warped_frame_forward = warped_frame_forward * masks[forward_flow_idx] + frames[forward_flow_idx] * (1 - masks[forward_flow_idx])
+    #             warped_frame_backward = warp_single_flow(warped_frame_backward, backward_flows[backward_flow_idx])
+    #             warped_frame_backward = warped_frame_backward * masks[backward_flow_idx] + frames[backward_flow_idx] * (1 - masks[backward_flow_idx])
+    #             warped_frames_forward.append(warped_frame_forward)
+    #             warped_frames_backward.append(warped_frame_backward)
+    #         warped_frames_forward.pop()
+    #         warped_frames_backward.pop()
+    #         warped_frames_backward.reverse()
+    #         processed_frames.extend(interpolate_forward_backward(warped_frames_forward, warped_frames_backward))
+    for idx in tqdm(range(len(keyframes)-1), desc="PerVFI Interpolation"):
+        kf0 = torch.from_numpy(keyframes[idx]).permute(2,0,1).float().to(cfg.device)/255.0
+        kf1 = torch.from_numpy(keyframes[idx+1]).permute(2,0,1).float().to(cfg.device)/255.0
+        
+        start_idx = idx * cfg.interval
+        end_idx = (idx+1) * cfg.interval
+        fflow_seg = flows_forward_tensor[start_idx:end_idx]
+        bflow_seg = flows_backward_tensor[start_idx:end_idx]
+        
+        for j in range(cfg.interval):
+            t = (j + 1) / cfg.interval  
+            
+            with torch.no_grad():
+                inputs = [kf0.unsqueeze(0), kf1.unsqueeze(0), 
+                         fflow_seg[j].unsqueeze(0), bflow_seg[j].unsqueeze(0)]
+                
+                pred, _ = per_vfi.decode(z_list=None, inps=inputs, time=t)
+                pred = (pred.squeeze(0).permute(1,2,0).cpu().numpy() * 255).astype(np.uint8)
+                
+                mask = masks[start_idx + j]
+                blended = pred * mask + frames[start_idx + j] * (1 - mask)
+                processed_frames.append(blended.astype(np.uint8))
+    
     # np.savez_compressed(os.path.join(cfg.output_dir, "processed_frames.npz"), frames=np.array(processed_frames))
     # processed_frames = np.load(os.path.join(cfg.output_dir, "processed_frames.npz"))['frames']
     # processed_frames = processed_frames.astype(np.uint8)

@@ -97,7 +97,9 @@ def get_processed_keyframes(cfg):
     """
     keyframe_path = cfg.output_dir
     keyframe_paths = []
+    # print(keyframe_path)
     for root, dirs, files in os.walk(keyframe_path):
+        # print(files)
         for file in files:
             if file.endswith(".png"): # TODO: change this because processed keyframes is also like this
                 keyframe_paths.append(os.path.join(root, file))
