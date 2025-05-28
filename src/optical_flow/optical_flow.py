@@ -101,6 +101,8 @@ def frame_interpolation(cfg):
     # masks = np.load(os.path.join(cfg.output_dir, "masks.npy"))
     # masks = np.expand_dims(masks, axis=-1)
     # print(f"masks shape: {masks.shape}")
+    if cfg.background:
+        masks = 1 - masks
 
     processed_frames = []
     next_keyframes = keyframes[1:] + [frames[-1]]

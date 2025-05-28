@@ -1,23 +1,25 @@
-video_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/example.mp4 # path/to/video
+video_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/example1.mp4 # path/to/video
 keyframe_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/keyframes/ # path/to/keyframes
 frame_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/frames/ # path/to/frames
-output_dir: /home/wzh/nfsdata/projects/CLEVAM-DM/video_output/example/ # path/to/output
+output_dir: /home/wzh/nfsdata/projects/CLEVAM-DM/video_output/example1/ # path/to/output
 maskformer_path: /home/wzh/nfsdata/projects/CLEVAM-DM/src/mask_former/configs/maskformer_R50_bs32_60k.yaml
 brushnet_path: /home/wzh/nfsdata/projects/CLEVAM-DM/data/ckpt
 num_inference_steps: 50
-interval: 24 # interval between frames, 70 for 4 images
+interval: 8
+change_background: true
+do_inverse: true
 prompts:
-  original_inside: skiing person in the front
-  edit_inside: skiing polar bear
+  original_inside: car
+  edit_inside: a rusty jeep
   original_outside: background
-  edit_outside: background
+  edit_outside: in the green nature with moutains and grass, but covered in snow.
 
-guidance_scale: 3.5
-chunk_size: 18
+guidance_scale: 7.5
+chunk_size: 4
 
 optical_flow:
   model_name: dpflow
   ckpt_path: sintel
 
-device: cuda:5
+device: cuda:0
 

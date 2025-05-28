@@ -67,3 +67,44 @@ def get_segmentation_masks(cfg, keyframes, save_segm=True):
         segms_all = np.expand_dims(segms_all, axis=-1)
     np.save(f"{cfg.keyframe_path}/masks.npy", segms_all)
     return segms_all
+
+def inversion(x, model, scheduler, original_prompt_embeds, cfg):
+    scheduler.set_timesteps(cfg.num_inference_steps)
+    seq = scheduler.timesteps
+    seq = torch.flip(seq, dims=(0,))
+    b = scheduler.betas
+    b = b.to(x.device)
+
+    with torch.no_grad():
+        n = x.size(0)
+        seq_next = [-1] + list(seq[:-1])
+        seq_iter = seq_next[1:]
+        seq_next_iter = seq[1:]
+
+        x0_preds = []
+        xs = [x]
+        for index, (i, j) in tqdm(enumerate(zip(seq_iter, seq_next_iter)), total=len(seq_iter)):
+            t = (torch.ones(n) * i).to(x.device)
+            next_t = (torch.ones(n) * j).to(x.device)
+            at = (1 - b).cumprod(dim=0).index_select(0, t.long())
+            if next_t.sum() == -next_t.shape[0]:
+                at_next = torch.ones_like(at)
+            else:
+                at_next = (1 - b).cumprod(dim=0).index_select(0, next_t.long())
+
+            xt = xs[-1].to(x.device)
+
+            # set_timestep(model, 0.0)
+
+            # print(f"mode shapes: {xt.shape}, {original_prompt_embeds.shape}")
+            et = model(xt, t, encoder_hidden_states=original_prompt_embeds).sample
+            # print(f"et shape: {et.shape}, xt shape: {xt.shape}, at shape: {at.shape}")
+            at = at.reshape(-1, 1, 1, 1)
+            at_next = at_next.reshape(-1, 1, 1, 1)
+            x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()
+            x0_preds.append(x0_t.to("cpu"))
+            c2 = (1 - at_next).sqrt()
+            xt_next = at_next.sqrt() * x0_t + c2 * et
+            xs.append(xt_next.to("cpu"))
+
+    return xs, x0_preds
