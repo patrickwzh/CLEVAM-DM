@@ -68,8 +68,8 @@ class ConsistentLocalEdit:
         keyframes = keyframes / 255.0
         print(f"keyframes shape: {keyframes.shape}")
         init_latents = []
-        for start in range(0, len(keyframes), 4):
-            end = min(start + 4, len(keyframes))
+        for start in range(0, len(keyframes), cfg.chunk_size):
+            end = min(start + cfg.chunk_size, len(keyframes))
             keyframes_i = keyframes[start:end]
             print(f"keyframes_i shape: {keyframes_i.shape}")
             init_latents.append(vae.encode(keyframes_i).latent_dist.sample() * 0.18215)
@@ -81,7 +81,7 @@ class ConsistentLocalEdit:
         for start in range(0, 2 * batch_size, cfg.chunk_size):
             end = min(start + cfg.chunk_size, 2 * batch_size)
             latents_i, _ = inversion(
-                init_latents[start:end], self.pipeline.unet, self.pipeline.scheduler, original_prompt_embeds, cfg
+                init_latents[start:end], self.pipeline.unet, self.pipeline.scheduler, original_prompt_embeds[start:end], cfg
             )
             latents_i = [latent_i.to(cfg.device) for latent_i in latents_i]
             latents_i = torch.stack(latents_i)
