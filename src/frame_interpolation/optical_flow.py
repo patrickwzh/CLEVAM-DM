@@ -233,7 +233,7 @@ def frame_interpolation(cfg):
             interpolated_np = interpolated_np * masks[mask_idx] + frames[mask_idx] * (
                 1 - masks[mask_idx]
             )
-            if cfg.save_mid_interpolated_frames and middle_idx % cfg.save_interval == cfg.save_interval // 2:
+            if cfg.save_mid_interpolated_frames and middle_idx % cfg.interval == cfg.interval // 2:
                 cv2.imwrite(
                     os.path.join(cfg.output_dir, f"interpolated_frame_{middle_idx:04d}.png"),
                     interpolated_np.astype(np.uint8),

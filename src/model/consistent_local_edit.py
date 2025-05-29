@@ -62,7 +62,7 @@ class ConsistentLocalEdit:
         keyframes = np.array(keyframes)
         keyframes = torch.from_numpy(keyframes)
         # format keyframes
-        keyframes = keyframes.permute(0, 3, 1, 2).to(cfg.device)
+        keyframes = keyframes.permute(0, 3, 1, 2).to(device=cfg.device, dtype=vae.dtype)
         # Convert BGR to RGB for keyframes (assuming keyframes shape is [N, C, H, W])
         keyframes = keyframes[:, [2, 1, 0], ...]
         keyframes = keyframes / 255.0
@@ -81,7 +81,7 @@ class ConsistentLocalEdit:
             latents_i, _ = inversion(
                 init_latents[start:end], self.pipeline.unet, self.pipeline.scheduler, original_prompt_embeds[start:end], cfg
             )
-            latents_i = [latent_i.to(cfg.device) for latent_i in latents_i]
+            latents_i = [latent_i.to(device=cfg.device, dtype=vae.dtype) for latent_i in latents_i]
             latents_i = torch.stack(latents_i)
             latents.append(latents_i)
         latents = torch.cat(latents, dim=1)
@@ -94,7 +94,7 @@ class ConsistentLocalEdit:
         keyframes = get_keyframes(cfg)
         print("Loading segmentation masks...")
         masks = np.load(os.path.join(cfg.keyframe_path, "masks.npy"))
-        if cfg.change_bacground:
+        if cfg.change_background:
             masks = 1 - masks
         print("Segmentation masks loaded.")
 

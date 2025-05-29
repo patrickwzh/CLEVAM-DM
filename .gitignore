@@ -6,4 +6,4 @@ test/
 test_output/
 data/
 video_output/
-
+.gradio/

@@ -92,7 +92,7 @@ def inversion(x, model, scheduler, original_prompt_embeds, cfg):
             else:
                 at_next = (1 - b).cumprod(dim=0).index_select(0, next_t.long())
 
-            xt = xs[-1].to(x.device)
+            xt = xs[-1].to(device=x.device, dtype=x.dtype)
 
             # set_timestep(model, 0.0)
 

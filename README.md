@@ -16,8 +16,9 @@ Note that you need to manually choose the version for `cupy` in `requirements.tx
 
 ## Running the Pipeline
 
-First, download the necessary pretrained weights. *TODO*
+First, download the necessary pretrained weights.
 
+- Download directory `segmentation_mask_brushnet_ckpt` and `realisticVisionV60B1_v51VAE` from [Google Drive](https://drive.google.com/drive/folders/1fqmS1CEOvXCxNWFrsSYd_jHYXxrydh1n) and place them in `cfg.brushnet_path`.
 - Download [pre-trained checkpoint](https://huggingface.co/Mulns/PerVFI-v1-0/tree/main/PerVFI) named `v00.pth` and place it in `cfg.pervfi_path`.
 
 All scripts are located in the `scripts` folder.

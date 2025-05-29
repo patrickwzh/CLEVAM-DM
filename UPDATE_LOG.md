@@ -1,5 +1,12 @@
 ## 2025.05.29
 
+by lkh
+
+- Update gradio UI for the pipeline
+- Update `README.md` with running instructions
+
+## 2025.05.29
+
 by wzh
 
 - Utilize PerVFI for frame interpolation

@@ -17,7 +17,7 @@ class StyleAlignedArgs:
     adain_queries: bool = True
     adain_keys: bool = True
     adain_values: bool = False
-    full_attention_share: bool = False
+    full_attention_share: bool = True
     shared_score_scale: float = 1.
     shared_score_shift: float = 0.
     only_self_level: float = 0.
