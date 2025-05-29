@@ -9,7 +9,7 @@ def build_model(name, device="cuda"):
     if "pervfi-vb" in name.lower():
         from models.pipeline import Pipeline_infer
 
-        ckpt = "/mnt/d/DL2025/CLEVAM-DM/checkpoints/vb.pth"
+        ckpt = "checkpoints/PerVFI/vb.pth"
         # e.g., RAFT+PerVFI-vb
         ofnet = name.split("+")[0]
         ofnet = None if ofnet == "none" else ofnet
@@ -18,7 +18,7 @@ def build_model(name, device="cuda"):
     elif "pervfi" in name.lower():
         from models.pipeline import Pipeline_infer
 
-        ckpt = "/mnt/d/DL2025/CLEVAM-DM/checkpoints/v00.pth"
+        ckpt = "checkpoints/PerVFI/v00.pth"
         # e.g., RAFT+PerVFI
         ofnet = name.split("+")[0]
         ofnet = None if ofnet == "none" else ofnet

@@ -65,6 +65,8 @@ class FeaturePyramid(torch.nn.Module):
         tenOne,
         tenTwo=None,
         tenFlows: list[Tensor] = None,
+        F1t=None,
+        F2t=None,
         time: float = 0.5,
     ):
         x1s = self.netEncode(tenOne)
@@ -73,9 +75,11 @@ class FeaturePyramid(torch.nn.Module):
         F12, F21 = tenFlows
         x2s = self.netEncode(tenTwo)
         m1t = self.netSoftmetric(x1s, x2s, F12) * 2 * time
-        F1t = time * F12
+        if F1t is None:
+            F1t = time * F12
         m2t = self.netSoftmetric(x2s, x1s, F21) * 2 * (1 - time)
-        F2t = (1 - time) * F21
+        if F2t is None:
+            F2t = (1 - time) * F21
         Ft2 = -1 * softsplat(F2t, F2t, m2t.neg().clip(-20.0, 20.0), "soft")
         x1s, bmasks = warp_pyramid(x1s, m1t, F1t)
         return list(zip(x1s, x2s)), bmasks, Ft2
@@ -261,11 +265,11 @@ class Network(torch.torch.nn.Module):
         self.multiscaleFuse = MultiscaleFuse(cond_c)
         self.condFLownet = CondFlowNet(cond_c, with_bn=False, train_1x1=True, K=16)
 
-    def get_cond(self, inps: list, time: float = 0.5):
+    def get_cond(self, inps: list, F1t, F2t, time: float = 0.5):
         tenOne, tenTwo, fflow, bflow = inps
         with accelerate.Accelerator().autocast():
             feas, bmasks, Ft2 = self.featurePyramid(
-                tenOne, tenTwo, [fflow, bflow], time
+                tenOne, tenTwo, [fflow, bflow], F1t, F2t, time
             )
             feaR = self.deformableAlign(feas, bmasks, Ft2)[::-1]
             feaL = [feas[i][0] for i in range(3)]
@@ -281,13 +285,9 @@ class Network(torch.torch.nn.Module):
         else:
             return (x + 1) / 2
 
-    def forward(self, gt=None, zs=None, inps=[], time=0.5, code="encode"):
-        if code == "encode":
-            return self.encode(gt, inps, time)
-        elif code == "decode":
-            return self.decode(zs, inps, time)
-        else:
-            return self.encode_decode(gt, inps, time, zs=zs)
+    def forward(self, gt=None, zs=None, inps=[], F1t=None, F2t=None, time=0.5, code="decode"):
+        assert code == "decode"
+        return self.decode(zs, inps, F1t, F2t, time)
 
     def encode(self, gt, inps: list, time: float = 0.5):
         img0, img1 = [self.normalize(x) for x in inps[:2]]
@@ -309,11 +309,11 @@ class Network(torch.torch.nn.Module):
         nll = -(loss + log_det + log_p)
         return nll, zs, smasks
 
-    def decode(self, z_list: list, inps: list, time: float = 0.5):
+    def decode(self, z_list: list, inps: list, F1t, F2t, time: float = 0.5):
         img0, img1 = [self.normalize(x) for x in inps[:2]]
         cond = [img0, img1] + inps[-2:]
 
-        conds, smasks = self.get_cond(cond, time=time)
+        conds, smasks = self.get_cond(cond, F1t, F2t, time=time)
         pred = self.condFLownet(z_list, conds, reverse=True)
         pred = self.normalize(pred, reverse=True)
         return pred, smasks

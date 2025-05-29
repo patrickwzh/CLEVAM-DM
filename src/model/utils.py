@@ -50,7 +50,7 @@ def get_segmentation_masks(cfg, keyframes, save_segm=True):
     segms_all = []
     chunk_size = min(cfg.chunk_size, len(keyframes))
     with torch.no_grad():
-        for i in tqdm(range(0, len(keyframes), chunk_size), desc="Processing keyframes"):
+        for i in tqdm(range(0, len(keyframes), chunk_size), desc="Getting segmentation masks"):
             end = min(i + chunk_size, len(keyframes))
             chunk = keyframes[i:end]
             prompts_chunk = [cfg.prompts.original_inside] * len(chunk)
@@ -96,9 +96,7 @@ def inversion(x, model, scheduler, original_prompt_embeds, cfg):
 
             # set_timestep(model, 0.0)
 
-            # print(f"mode shapes: {xt.shape}, {original_prompt_embeds.shape}")
             et = model(xt, t, encoder_hidden_states=original_prompt_embeds).sample
-            # print(f"et shape: {et.shape}, xt shape: {xt.shape}, at shape: {at.shape}")
             at = at.reshape(-1, 1, 1, 1)
             at_next = at_next.reshape(-1, 1, 1, 1)
             x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()

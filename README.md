@@ -7,20 +7,31 @@ This repository contains the code and data for our 2025 DL course final project.
 After cloning the repository, create a conda environment and install the required packages:
 
 ```bash
-conda create -n clevam python=3.10
+conda create -n clevam python=3.11.11
 conda activate clevam
 pip install -r requirements.txt
-pip install numpy==1.26.4
 ```
+
+Note that you need to manually choose the version for `cupy` in `requirements.txt` based on your CUDA version.
 
 ## Running the Pipeline
 
 First, download the necessary pretrained weights. *TODO*
 
+- Download [pre-trained checkpoint](https://huggingface.co/Mulns/PerVFI-v1-0/tree/main/PerVFI) named `v00.pth` and place it in `cfg.pervfi_path`.
+
 All scripts are located in the `scripts` folder.
 
 To run the pipeline, first specify the configurations in `src/config/config.yaml`. Please make sure all **folder** paths ends with `/`.
 If you run into an OOM error, you can try to reduce the `chunk_size` in `config.yaml`.
+
+Configurations you **should not** change:
+```yaml
+do_inverse: true # set to true to make the edits more aligned
+interval: ... # automatically determined by time_per_keyframe
+change_background: ... # automatically determined by the prompts
+fps: ... # automatically determined by the input video
+```
 
 Then, you can run the pipeline with the following command:
 
@@ -28,7 +39,7 @@ Then, you can run the pipeline with the following command:
 sh scripts/run.sh
 ```
 
-Or if you simply want to clear the intermediate files (**including** the final output video), you can run
+If you simply want to clear the intermediate files (**including** the final output video), you can run
 
 ```bash
 sh scripts/clear.sh
