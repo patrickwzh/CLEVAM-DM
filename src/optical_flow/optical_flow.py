@@ -165,12 +165,8 @@ def frame_interpolation(cfg):
     # # # # # frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB).transpose(2, 0, 1) for f in frames]
     print("\tGetting optical flows...")
     forward_flows, backward_flows = get_optical_flows(model, frames, cfg.chunk_size)
-<<<<<<< HEAD
-    # (N-1, 2, H, W)
-=======
     flows_forward_tensor = torch.from_numpy(forward_flows).float().to(cfg.device)
     flows_backward_tensor = torch.from_numpy(backward_flows).float().to(cfg.device)
->>>>>>> 85311df63366cc0e2449a858fe9e394c3372ff9d
     # # # # print(f"flow shape: {flows.shape}")
     # # # os.makedirs(cfg.output_dir, exist_ok=True)
     # # np.save(os.path.join(cfg.output_dir, "flows_rev.npy"), flows)
