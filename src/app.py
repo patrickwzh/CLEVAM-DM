@@ -4,7 +4,7 @@ import os
 import shutil
 from src.utils import extract_keyframes, get_keyframes
 from src.model.consistent_local_edit import ConsistentLocalEdit
-from src.optical_flow.optical_flow import frame_interpolation
+from src.frame_interpolation.optical_flow import frame_interpolation
 from src.model.utils import get_segmentation_masks
 
 def process_video(input_video, original_inside, original_outside, edit_inside, edit_outside, guidance_scale):

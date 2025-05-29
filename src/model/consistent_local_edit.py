@@ -66,15 +66,13 @@ class ConsistentLocalEdit:
         # Convert BGR to RGB for keyframes (assuming keyframes shape is [N, C, H, W])
         keyframes = keyframes[:, [2, 1, 0], ...]
         keyframes = keyframes / 255.0
-        print(f"keyframes shape: {keyframes.shape}")
         init_latents = []
-        for start in range(0, len(keyframes), cfg.chunk_size):
-            end = min(start + cfg.chunk_size, len(keyframes))
-            keyframes_i = keyframes[start:end]
-            print(f"keyframes_i shape: {keyframes_i.shape}")
-            init_latents.append(vae.encode(keyframes_i).latent_dist.sample() * 0.18215)
+        with torch.no_grad():
+            for start in range(0, len(keyframes), cfg.chunk_size):
+                end = min(start + cfg.chunk_size, len(keyframes))
+                keyframes_i = keyframes[start:end]
+                init_latents.append(vae.encode(keyframes_i).latent_dist.sample() * 0.18215)
         init_latents = torch.cat(init_latents, dim=0)
-        print(f"init_latents shape: {init_latents.shape}")
         batch_size, _, _, _ = init_latents.shape
         init_latents = init_latents.repeat(2, 1, 1, 1)
         latents = []
@@ -96,8 +94,7 @@ class ConsistentLocalEdit:
         keyframes = get_keyframes(cfg)
         print("Loading segmentation masks...")
         masks = np.load(os.path.join(cfg.keyframe_path, "masks.npy"))
-        print(f"mask shape: {masks.shape}")
-        if cfg.change_background:
+        if cfg.change_bacground:
             masks = 1 - masks
         print("Segmentation masks loaded.")
 
@@ -110,7 +107,6 @@ class ConsistentLocalEdit:
         prompt_embeds = prompt_embeds.repeat(2 * len(keyframes), 1, 1)
         if cfg.do_inverse:
             init_latents = self.get_inverse_latents(keyframes, prompt_embeds, self.pipeline.vae, cfg)
-        print(f"init latents shape: {init_latents.shape}")
 
 
         init_images = [
@@ -128,7 +124,6 @@ class ConsistentLocalEdit:
             Image.fromarray(mask.astype(np.uint8).repeat(3, -1) * 255).convert("RGB")
             for mask in masks
         ]
-        print(f"len: {len(init_images)}, {len(masks)}")
         prompts = [cfg.prompts.edit_inside if not cfg.change_background else cfg.prompts.edit_outside] * batch_size
 
         generator = torch.Generator(cfg.device).manual_seed(42)

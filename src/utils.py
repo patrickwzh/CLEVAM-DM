@@ -8,16 +8,22 @@ def extract_keyframes(cfg):
     Load video
     input: cfg.video_path/video_name.mp4
     no outputs, save keyframes to cfg.keyframes_path/video_name/key_frame_{id}.png
+    Also sets cfg.fps to the video's frames per second.
     """
     video_path = cfg.video_path
     keyframe_path = cfg.keyframe_path
-    interval = cfg.interval  
     frame_path = cfg.frame_path
     cap = cv2.VideoCapture(video_path)
     frame_count = 0
     keyframe_id = 0
     keyframe_indices = [] 
     keyframe_paths = []    
+
+    # Read fps and write to cfg
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    cfg.fps = fps
+    cfg.interval = int(fps * cfg.time_per_keyframe)
+    interval = cfg.interval
 
     if not os.path.exists(keyframe_path):
         os.makedirs(keyframe_path)
@@ -30,8 +36,16 @@ def extract_keyframes(cfg):
             break
         # Resize frame to nearest multiple of 8 (smaller than original)
         h, w = frame.shape[:2]
-        new_h = (h // 8) * 8
-        new_w = (w // 8) * 8
+
+        # Resize so that the max side length <= cfg.max_size, keeping aspect ratio
+        max_size = cfg.max_size
+        scale = min(1.0, max_size / max(h, w))
+        new_h = int(h * scale)
+        new_w = int(w * scale)
+
+        # Make sure new_h and new_w are multiples of 8
+        new_h = (new_h // 8) * 8
+        new_w = (new_w // 8) * 8
         if new_h != h or new_w != w:
             frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
@@ -74,14 +88,22 @@ def get_keyframes(cfg):
 def get_frames(cfg):
     """
     Load frames from cfg.output_dir/frame_path/frame_{frame_id}.png
-    Returns a torch tensor of shape (num_frames, height, width, channels) with BGR format
+    Returns a list of numpy arrays (num_frames, height, width, channels) with BGR format
     """
     frame_path = cfg.frame_path
     frame_paths = []
     for root, dirs, files in os.walk(frame_path):
         for file in files:
-            if file.endswith(".png") and file.startswith("frame_"): # TODO: change this because processed frames is also like this
+            if file.endswith(".png") and file.startswith("frame_"):
                 frame_paths.append(os.path.join(root, file))
+
+    # Sort frame_paths by frame index extracted from filename
+    def extract_index(path):
+        filename = os.path.basename(path)
+        # Assumes format: frame_0000.png
+        idx_str = filename.replace("frame_", "").replace(".png", "")
+        return int(idx_str)
+    frame_paths.sort(key=extract_index)
 
     frames = []
     for path in frame_paths:
@@ -97,12 +119,17 @@ def get_processed_keyframes(cfg):
     """
     keyframe_path = cfg.output_dir
     keyframe_paths = []
-    # print(keyframe_path)
     for root, dirs, files in os.walk(keyframe_path):
-        # print(files)
         for file in files:
-            if file.endswith(".png"): # TODO: change this because processed keyframes is also like this
+            if file.endswith(".png"):
                 keyframe_paths.append(os.path.join(root, file))
+
+    # Sort keyframe_paths by index extracted from filename (e.g., 0000.png)
+    def extract_index(path):
+        filename = os.path.basename(path)
+        idx_str = filename.replace(".png", "")
+        return int(idx_str)
+    keyframe_paths.sort(key=extract_index)
 
     keyframes = []
     for path in keyframe_paths:
@@ -137,7 +164,7 @@ def save_processed_video(frames, cfg):
     output_path = os.path.join(output_dir, "processed_video.mp4")
     
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    output_movie = cv2.VideoWriter(output_path, fourcc, 24.0, (frames[0].shape[1], frames[0].shape[0]))
+    output_movie = cv2.VideoWriter(output_path, fourcc, cfg.fps, (frames[0].shape[1], frames[0].shape[0]))
     for frame in frames:
         output_movie.write(frame)
     output_movie.release()

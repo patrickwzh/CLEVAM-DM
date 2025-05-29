@@ -3,11 +3,8 @@ torchvision==0.19.1
 transformers==4.44.2
 Pillow==9.5.0
 ftfy
-tensorboard
 datasets
-opencv-python
 imgaug
-accelerate==0.20.3
 image-reward
 hpsv2
 torchmetrics
@@ -15,6 +12,15 @@ open-clip-torch
 clip
 segment_anything
 ptlflow
+accelerate==0.20.0 # or 0.20.3?
+easydict==1.11
+lpips==0.1.4
+loguru==0.7.2
+tensorboard==2.16.2
+tensorboard-data-server==0.7.2
+tensorboardx==2.6.2.2
+opencv-python==4.8.1.78
+cupy-cuda11x==11.4.0 # this depends on your CUDA version, change it accordingly
 git+https://github.com/luca-medeiros/lang-segment-anything.git
 git+https://github.com/TencentARC/BrushNet.git
 

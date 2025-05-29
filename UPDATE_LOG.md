@@ -1,3 +1,12 @@
+## 2025.05.29
+
+by wzh
+
+- Utilize PerVFI for frame interpolation
+- Restructure input format, see `README.md` for details
+- Update `requirements.txt` with PerVFI dependency
+
+
 ## 2025.05.28
 
 by wzh

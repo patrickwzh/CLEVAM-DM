@@ -1,26 +1,25 @@
-video_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/example1.mp4 # path/to/video
-keyframe_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/keyframes/ # path/to/keyframes
-frame_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/frames/ # path/to/frames
-output_dir: /home/wzh/nfsdata/projects/CLEVAM-DM/video_output/example1/ # path/to/output
-maskformer_path: /home/wzh/nfsdata/projects/CLEVAM-DM/src/mask_former/configs/maskformer_R50_bs32_60k.yaml
+video_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/example1.mp4
+keyframe_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/keyframes/
+frame_path: /home/wzh/nfsdata/projects/CLEVAM-DM/input/frames/
+output_dir: /home/wzh/nfsdata/projects/CLEVAM-DM/video_output/example1/
 brushnet_path: /home/wzh/nfsdata/projects/CLEVAM-DM/data/ckpt
-pervfi_path: /home/wzh/nfsdata/projects/CLEVAM-DM/
+pervfi_path: /home/wzh/nfsdata/projects/CLEVAM-DM/checkpoints/v00.pth
+save_mid_interpolated_frames: false
 num_inference_steps: 50
-interval: 8
-change_background: true
 do_inverse: true
+max_size: 720
 prompts:
   original_inside: car
   edit_inside: a rusty jeep
   original_outside: background
-  edit_outside: in the green nature with moutains and grass, but covered in snow.
-
+  edit_outside: background
 guidance_scale: 7.5
-chunk_size: 4
-
+chunk_size: 8
+interval: 4
+time_per_keyframe: 0.75
+change_background: false
+fps: 10.0
 optical_flow:
   model_name: dpflow
   ckpt_path: sintel
-
 device: cuda
-
