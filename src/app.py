@@ -15,12 +15,9 @@ def process_video(input_video, original_inside, original_outside, edit_inside, e
     cfg.prompts.edit_inside = edit_inside
     cfg.prompts.edit_outside = edit_outside
     cfg.guidance_scale = guidance_scale
+    cfg.video_path = input_video
 
     # clear
-    yield gr.update(visible=True), "Saving input video..."
-    src_path = input_video
-    dst_path = cfg.video_path
-    shutil.copyfile(src_path, dst_path)
     os.system(f"rm {cfg.keyframe_path}* {cfg.frame_path}* {cfg.output_dir}*")
     yield gr.update(visible=True), "Intermediate files cleared. Extracting keyframes..."
 
