@@ -73,7 +73,7 @@ with gr.Blocks(title="CLEVAM-DM") as app:
             original_outside = gr.Textbox(label="Original Outside Prompt", placeholder="Describe the original outside scene")
             edit_outside = gr.Textbox(label="Edit Outside Prompt", placeholder="Describe the edited outside scene")
 
-            guidance_scale = gr.Slider(minimum=1, maximum=12, value=7.5, step=0.1, label="Guidance Scale")
+            guidance_scale = gr.Slider(minimum=1, maximum=20, value=7.5, step=0.1, label="Guidance Scale")
             time_per_keyframe = gr.Slider(minimum=0.1, maximum=1.0, value=0.75, step=0.05, label="Keyframe Sample Interval (seconds)")
             chunk_size = gr.Number(value=20, label="Chunk Size")
 
