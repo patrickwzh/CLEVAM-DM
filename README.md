@@ -34,6 +34,12 @@ change_background: ... # automatically determined by the prompts
 fps: ... # automatically determined by the input video
 ```
 
+Also, make sure to set the environment variable `CUDA_HOME` to your CUDA installation path, e.g.,
+
+```bash
+export CUDA_HOME=/usr/local/cuda-11.4 # you might want to ls /usr/local to find the correct path
+```
+
 Then, you can run the pipeline with the following command:
 
 ```bash
@@ -47,3 +53,5 @@ sh scripts/clear.sh
 ```
 
 You can check out `scripts/run.sh` to run python scripts separately.
+
+Run `python -m src.app` to start the web app.
