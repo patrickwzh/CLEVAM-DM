@@ -10,6 +10,7 @@ After cloning the repository, create a conda environment and install the require
 conda create -n clevam python=3.11.11
 conda activate clevam
 pip install -r requirements.txt
+sudo apt update && apt install ffmpeg
 ```
 
 Note that you need to manually choose the version for `cupy` in `requirements.txt` based on your CUDA version.
@@ -51,6 +52,8 @@ If you simply want to clear the intermediate files (**including** the final outp
 ```bash
 sh scripts/clear.sh
 ```
+
+You may need to delete `cached_download` in `diffusers/utils/dynamic_modules_utils.py` if you encounter an error related to `cached_download`.
 
 You can check out `scripts/run.sh` to run python scripts separately.
 

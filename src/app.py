@@ -9,7 +9,7 @@ from src.frame_interpolation.optical_flow import frame_interpolation
 from src.model.utils import get_segmentation_masks
 import gc
 
-def process_video(input_video, original_inside, edit_inside, original_outside, edit_outside, guidance_scale, time_per_keyframe, chunk_size):
+def process_video(user_name, input_video, original_inside, edit_inside, original_outside, edit_outside, guidance_scale, time_per_keyframe, chunk_size):
     yield gr.update(visible=True), "Reading config file..."
     cfg = OmegaConf.load("src/config/config.yaml")
     cfg.prompts.original_inside = original_inside
@@ -20,6 +20,18 @@ def process_video(input_video, original_inside, edit_inside, original_outside, e
     cfg.video_path = input_video
     cfg.time_per_keyframe = time_per_keyframe
     cfg.chunk_size = chunk_size
+
+    cfg.keyframe_path = os.path.join(cfg.keyframe_path, user_name, "")
+    cfg.frame_path = os.path.join(cfg.frame_path, user_name, "")
+    cfg.output_dir = os.path.join(cfg.output_dir, user_name, "")
+
+    if original_inside != edit_inside and original_outside != edit_outside:
+        raise ValueError("Only one of the inside or outside prompts should be edited. Please check your inputs.")
+    
+    if original_inside != edit_inside:
+        cfg.change_background = False
+    else:
+        cfg.change_background = True
 
     log = []
 
@@ -64,6 +76,8 @@ def show_log(log):
 with gr.Blocks(title="CLEVAM-DM") as app:
     gr.Markdown("# CLEVAM-DM")
 
+    user_name = gr.Textbox(label="User Name", placeholder="Enter your name to save your results", max_length=50)
+
     with gr.Row():
         with gr.Column():
             input_video = gr.Video(label="Input Video", include_audio=False)
@@ -83,9 +97,10 @@ with gr.Blocks(title="CLEVAM-DM") as app:
     submit_btn = gr.Button("Process Video")
     submit_btn.click(
         process_video,
-        inputs=[input_video, original_inside, edit_inside, original_outside, edit_outside, guidance_scale, time_per_keyframe, chunk_size],
+        inputs=[user_name, input_video, original_inside, edit_inside, original_outside, edit_outside, guidance_scale, time_per_keyframe, chunk_size],
         outputs=[output_video, log_text],
-        show_progress="full"
+        show_progress="full",
+        concurrency_limit=4
     )
 
-app.launch()    
+app.launch(share=True)
