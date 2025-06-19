@@ -2,6 +2,16 @@
 
 This repository contains the code and data for our 2025 DL course final project.
 
+## Overview
+
+Video editing with generative AI presents significant challenges in maintaining temporal consistency across frames. While diffusion models have demonstrated impressive capabilities in image generation and editing, their application to video often results in inconsistent transformations or unwanted global changes. We propose CLEVAM-DM, a novel approach that enables consistent local edits in videos through attention manipulation in diffusion models. Our framework operates through a sequential pipeline of keyframe preparation, consistent local editing, and video frame interpolation. By combining advanced inpainting, attention sharing mechanisms, and optical flow-guided frame synthesis, CLEVAM-DM achieves high-quality, temporally consistent local edits while preserving motion dynamics and background elements. Unlike existing approaches that require specialized video models or extensive training, our method operates efficiently on standard hardware, requires no additional training, and works with existing image-based diffusion models. Experiments demonstrate CLEVAM-DM's ability to produce coherent object transformations across diverse video content while maintaining visual fidelity and motion consistency.
+
+We present some qualitative results of CLEVAM-DM. **Top**: original video frames. **Bottom**: processed frames. The first four processed frames are keyframes; the last column shows interpolated frames.
+
+![Example of CLEVAM-DM local video editing](./assets/examples.png)
+
+Our [poster](./assets/poster.pdf) and [final report](./assets/report.pdf) can be found in `assets/`.
+
 ## Setup
 
 After cloning the repository, create a conda environment and install the required packages:
